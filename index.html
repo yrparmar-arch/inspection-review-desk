@@ -1,0 +1,1171 @@
+<title>Inspection Review Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+/* Layout: corporate sign-in look. Solid deep-blue top band, white panels on a pale grey ground, Roboto, 2px corners, grey primary action. */
+:root{
+  --bg:#f7f9fa; --surface:#ffffff; --sunk:#f7f9fa; --ink:#3f4040; --muted:#727273; --line:#dee0e0;
+  --band:#00049e; --band-ink:#ffffff; --band-soft:rgba(255,255,255,.72);
+  --accent:#00049e; --accent-ink:#ffffff; --accent-soft:#eceefb;
+  --btn:#706f6f; --btn-ink:#ffffff; --link:#1f6fa8;
+  --ok:#1e7a4c; --ok-soft:#e3f3ea; --warn:#9a5a00; --warn-soft:#fbf0dc; --bad:#b3261e; --bad-soft:#fbe6e4; --exc:#5a3f9a; --exc-soft:#eeeaf8;
+  --f-display:Roboto,"Helvetica Neue",Helvetica,"Segoe UI",Arial,sans-serif;
+  --f-body:Roboto,"Helvetica Neue",Helvetica,"Segoe UI",Arial,sans-serif;
+  --f-mono:"Roboto Mono",ui-monospace,Consolas,monospace;
+  --r:2px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121417; --surface:#1b1e22; --sunk:#16191c; --ink:#e4e6e8; --muted:#a2a6aa; --line:#30353a;
+  --band:#0a0e8a; --band-ink:#ffffff; --band-soft:rgba(255,255,255,.72);
+  --accent:#8f95ff; --accent-ink:#0b0d2a; --accent-soft:#1f2147;
+  --btn:#8a8989; --btn-ink:#ffffff; --link:#7cb8e6;
+  --ok:#6cc79a; --ok-soft:#14301f; --warn:#e6b25c; --warn-soft:#33270f; --bad:#f08a80; --bad-soft:#3a1916; --exc:#b9a2ea; --exc-soft:#271f3b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121417; --surface:#1b1e22; --sunk:#16191c; --ink:#e4e6e8; --muted:#a2a6aa; --line:#30353a;
+  --band:#0a0e8a; --band-ink:#ffffff; --band-soft:rgba(255,255,255,.72);
+  --accent:#8f95ff; --accent-ink:#0b0d2a; --accent-soft:#1f2147;
+  --btn:#8a8989; --btn-ink:#ffffff; --link:#7cb8e6;
+  --ok:#6cc79a; --ok-soft:#14301f; --warn:#e6b25c; --warn-soft:#33270f; --bad:#f08a80; --bad-soft:#3a1916; --exc:#b9a2ea; --exc-soft:#271f3b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14.5px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--band)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);font-weight:500;text-wrap:balance;margin:0}
+h2{font-size:1.35rem}h3{font-size:1.05rem}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-size:.92em}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
+.band{background:var(--band);color:var(--band-ink)}
+.top .band .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto;min-width:0}
+.seal{width:36px;height:36px;border-radius:50%;border:2px solid var(--band-ink);display:grid;place-items:center;font-weight:700;color:var(--band-ink);font-size:.72rem;letter-spacing:.05em;flex:none}
+.brand h1{font-size:1.2rem;line-height:1.15;color:var(--band-ink)}
+.brand p{margin:0;font-size:.75rem;color:var(--band-soft)}
+.verdict{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.band .count{color:var(--band-soft)}
+.band .btn.primary{background:var(--surface);color:var(--band);border-color:var(--surface)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-weight:500;font-size:.9rem;border:1px solid transparent;white-space:nowrap}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.p-ok{background:var(--ok-soft);color:var(--ok)} .p-bad{background:var(--bad-soft);color:var(--bad)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-exc{background:var(--exc-soft);color:var(--exc)}
+.count{font-family:var(--f-mono);font-size:.82rem;color:var(--muted);white-space:nowrap}
+
+.tabs{display:flex;gap:2px;overflow-x:auto;border-top:1px solid var(--line)}
+.tabs{border-top:0}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 14px;font-weight:500;font-size:.95rem;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.tabs button .n{font-family:var(--f-mono);font-size:.75rem;margin-right:6px;opacity:.7}
+
+main{padding-block:20px 60px}
+.note{background:var(--accent-soft);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;font-size:.9rem;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.note.warn{background:var(--warn-soft)}
+.stack{display:grid;gap:16px}
+
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);padding:6px 12px;border-radius:var(--r);cursor:pointer;font-size:.9rem;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--btn);color:var(--btn-ink);border-color:var(--btn)}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.ghost{background:none}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:3px 9px;font-size:.82rem}
+
+/* panels */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.panel>header{display:flex;align-items:baseline;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel>header p{margin:0;color:var(--muted);font-size:.86rem;flex-basis:100%}
+.panel .body{padding:14px 16px;display:grid;gap:14px}
+.code{font-family:var(--f-mono);font-size:.78rem;font-weight:500;background:var(--sunk);border:1px solid var(--line);border-radius:4px;padding:1px 7px;color:var(--accent)}
+
+/* upload grid */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px}
+.drop{border:1.5px dashed var(--line);border-radius:var(--r);padding:14px;text-align:center;background:var(--sunk);cursor:pointer}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop input{display:none}
+.files{display:grid;gap:8px}
+.file{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;display:grid;gap:6px;min-width:0}
+.file .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.file .name{font-weight:500;overflow-wrap:anywhere;min-width:0;flex:1}
+.chip{font-size:.75rem;padding:1px 8px;border-radius:999px;font-weight:500;white-space:nowrap}
+.c-ok{background:var(--ok-soft);color:var(--ok)}.c-warn{background:var(--warn-soft);color:var(--warn)}.c-bad{background:var(--bad-soft);color:var(--bad)}.c-n{background:var(--sunk);color:var(--muted);border:1px solid var(--line)}
+details>summary{cursor:pointer;color:var(--accent);font-size:.86rem}
+pre.text{white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;background:var(--sunk);padding:8px;border-radius:4px;font-family:var(--f-mono);font-size:.76rem;margin:6px 0 0}
+.sugg{display:grid;gap:6px;font-size:.86rem}
+.sugg .s{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.sugg .s span{flex:1;min-width:0;overflow-wrap:anywhere}
+
+/* form */
+.formlayout{display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px;align-items:start}
+.secnav{position:sticky;top:130px;display:grid;gap:2px;font-size:.88rem}
+.secnav a{color:var(--muted);text-decoration:none;padding:4px 8px;border-left:2px solid var(--line)}
+.secnav a:hover{color:var(--accent);border-left-color:var(--accent)}
+@media (max-width:900px){.formlayout{grid-template-columns:minmax(0,1fr)}.secnav{display:none}}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px 16px}
+.fld{display:grid;gap:4px;min-width:0}
+.fld>label,.lbl{font-size:.875rem;font-weight:400;color:var(--muted)}
+.fld .hint{font-size:.78rem;color:var(--muted)}
+input[type=text],input[type=date],select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:8px 10px;min-width:0}
+input[type=text]:focus,input[type=date]:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 1px var(--accent)}
+details>summary,.linkish{color:var(--link)}
+textarea{min-height:70px;resize:vertical}
+.ticks{display:flex;gap:6px 14px;flex-wrap:wrap}
+.tick{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:4px;padding:5px 10px;cursor:pointer;background:var(--sunk)}
+.tick input{accent-color:var(--accent);width:16px;height:16px}
+.tick img{height:26px;width:auto}
+.exc{border:1px solid var(--exc);background:var(--exc-soft);border-radius:var(--r);padding:10px 12px;display:grid;gap:10px}
+.exc>label{color:var(--exc);font-weight:600;display:flex;gap:8px;align-items:center;font-size:.9rem}
+.matrix{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;background:var(--sunk)}
+.tablewrap{overflow-x:auto}
+.tbl td input,.tbl td select{min-width:90px}
+.tbl td.x{width:1%}
+.tbl{min-width:560px}
+
+/* review */
+.summary{display:grid;grid-template-columns:auto 1fr;gap:16px 24px;align-items:center}
+@media (max-width:640px){.summary{grid-template-columns:1fr}}
+.bigv{font-family:var(--f-display);font-size:2rem;font-weight:700;line-height:1}
+.tally{display:flex;gap:18px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.tally div{display:grid}
+.tally b{font-family:var(--f-display);font-size:1.6rem;line-height:1}
+.tally span{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.group{border-left:4px solid var(--line)}
+.group.g-bad{border-left-color:var(--bad)}.group.g-warn{border-left-color:var(--warn)}.group.g-exc{border-left-color:var(--exc)}
+.ftable{min-width:760px}
+.ftable td:nth-child(4),.ftable td:nth-child(5){min-width:220px}
+.ftable .pg{font-family:var(--f-mono);font-size:.8rem;white-space:nowrap}
+.linkish{background:none;border:0;color:var(--accent);cursor:pointer;padding:0;font-size:.82rem;text-decoration:underline}
+.flag{margin-top:6px;display:grid;gap:6px}
+.excbox{margin-top:6px;font-size:.84rem;background:var(--exc-soft);border-radius:4px;padding:6px 8px}
+.empty{color:var(--muted);padding:12px 16px;font-size:.9rem}
+.copyout{width:100%;min-height:140px;font-family:var(--f-mono);font-size:.76rem}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:.88rem;z-index:20}
+@media (prefers-reduced-motion:no-preference){.btn,.tabs button{transition:border-color .15s,color .15s}}
+.p-n{background:rgba(255,255,255,.16);color:var(--band-ink)}
+.tabs button.checktab{background:var(--btn);color:var(--btn-ink);border-radius:var(--r) var(--r) 0 0;margin-left:6px}
+.tabs button.checktab .n{opacity:.85}
+.tabs button.checktab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-bottom-color:var(--accent)}
+.stale{background:var(--warn-soft);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+</style>
+
+<header class="top">
+  <div class="band"><div class="wrap">
+    <div class="brand">
+      <div class="seal" aria-hidden="true">IRD</div>
+      <div><h1>Inspection Review Desk</h1><p>Free local testing version · fixed rules, no AI</p></div>
+    </div>
+    <div class="verdict">
+      <span id="topPill" class="pill p-n">Not checked yet</span>
+      <span id="topCount" class="count"></span>
+    </div>
+  </div></div>
+  <div class="wrap"><nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="docs" aria-selected="true"><span class="n">1</span>Documents</button>
+    <button role="tab" data-tab="form" aria-selected="false"><span class="n">2</span>Report entries</button>
+    <button role="tab" data-tab="review" aria-selected="false" class="checktab"><span class="n">3</span>Check report now</button>
+    <button role="tab" data-tab="log" aria-selected="false"><span class="n">4</span>Trial log</button>
+  </nav></div>
+</header>
+
+<main class="wrap">
+  <div id="exampleNote" class="note warn" hidden>
+    <span><b>Example entries loaded.</b> The fields hold a fictional report with deliberate errors so you can see how findings appear. They are not your data.</span>
+    <button class="btn sm" type="button" id="clearExample">Start a new report</button>
+  </div>
+
+  <!-- DOCUMENTS -->
+  <section id="tab-docs" class="stack" style="margin-top:16px">
+    <div class="note"><span>Files stay in this browser. The tool extracts text from PDF and .docx files and suggests values; it does not read ticks, signatures or scanned pages. Those are confirmed by you in <b>Report entries</b>. Uploaded content is treated as reference data only.</span></div>
+    <div class="grid2" id="dropGrid"></div>
+  </section>
+
+  <!-- FORM -->
+  <section id="tab-form" hidden style="margin-top:16px">
+    <div class="formlayout">
+      <nav class="secnav" id="secnav"></nav>
+      <div class="stack" id="formRoot"></div>
+    </div>
+  </section>
+
+  <!-- REVIEW -->
+  <section id="tab-review" class="stack" hidden style="margin-top:16px"></section>
+
+  <!-- RULES -->
+  <section id="tab-rules" class="stack" hidden style="margin-top:16px"></section>
+
+  <!-- LOG -->
+  <section id="tab-log" class="stack" hidden style="margin-top:16px"></section>
+</main>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+"use strict";
+/* ---------- utilities ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm=v=>String(v??"").trim();
+const lc=v=>norm(v).toLowerCase();
+const clone=o=>JSON.parse(JSON.stringify(o));
+const uid=()=>Math.random().toString(36).slice(2,9);
+const reEsc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+const csvList=s=>String(s||"").split(",").map(x=>x.trim()).filter(Boolean);
+function store(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function load(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}}
+function getPath(o,p){return p.split(".").reduce((a,k)=>a==null?a:a[k],o)}
+function setPath(o,p,v){const ks=p.split(".");let a=o;ks.slice(0,-1).forEach(k=>{if(a[k]==null)a[k]={};a=a[k]});a[ks.at(-1)]=v}
+let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2200)}
+
+/* ---------- rules (configurable) ---------- */
+const DEFAULT_RULES={
+  basicFields:[
+    {key:"client",label:"Client",mandatory:true,allowed:[],po:false},
+    {key:"vendor",label:"Vendor / Manufacturer",mandatory:true,allowed:[],po:false},
+    {key:"location",label:"Inspection location",mandatory:true,allowed:[],po:false},
+    {key:"project",label:"Project",mandatory:true,allowed:["NA"],po:false},
+    {key:"subVendor",label:"Sub-vendor",mandatory:true,allowed:["NA"],po:false},
+    {key:"distribution",label:"Distribution",mandatory:true,allowed:["NA"],po:false},
+    {key:"ipoRef",label:"IPO Ref",mandatory:true,allowed:["Not Applicable"],po:false},
+    {key:"clientPo",label:"Client-to-BV PO",mandatory:true,allowed:["--","Not Applicable"],po:true},
+    {key:"vendorPo",label:"Client PO on vendor",mandatory:true,allowed:[],po:true},
+    {key:"item",label:"Item / equipment inspected",mandatory:true,allowed:[],po:false},
+    {key:"qty",label:"Quantity offered / inspected",mandatory:true,allowed:[],po:false},
+    {key:"inspector",label:"Inspector name",mandatory:true,allowed:[],po:false}
+  ],
+  docTypes:["IR","IRN","IC"],
+  rnNoValues:["--","Not Applicable","Not issued"],
+  nilWords:["Nil","No pending concerns","None"],
+  kwPos:["satisfactory","accepted","acceptable","found in order","found ok","conforming","released","cleared"],
+  kwNeg:["not satisfactory","unsatisfactory","rejected","rejection","not acceptable","not accepted","non-conforming","nonconforming","failed"],
+  kwOpen:["punch","ncr","non conformit","nonconformit","open point","pending","comment"],
+  kwReoffer:["re-offer","reoffer","re offer","re-inspection","reinspection"],
+  kwNewLot:["new lot","fresh lot"],
+  kwConcern:["pending","awaited","outstanding","concern","not yet"],
+  symbols:[{id:"s1",name:"Symbol 1",img:""},{id:"s2",name:"Symbol 2",img:""},{id:"s3",name:"Symbol 3",img:""}]
+};
+let R=load("ird.rules.v1")||clone(DEFAULT_RULES);
+for(const k in DEFAULT_RULES) if(R[k]==null) R[k]=clone(DEFAULT_RULES[k]);
+const saveRules=()=>store("ird.rules.v1",R);
+
+const MANUAL=[
+  {key:"sigAuth",label:"Signature authenticity (inspector / checker) verified"},
+  {key:"poMatch",label:"Items, tags and quantities agree with the PO"},
+  {key:"drawMatch",label:"Drawing / specification revisions, dimensions, materials agree"},
+  {key:"certMatch",label:"Certificates / test reports: traceability, calibration and results agree"},
+  {key:"rnMatch",label:"Release Note references, dates, items and quantities agree with the IR"}
+];
+const RESULTS=[
+  {k:"r1",label:"Satisfactory (Without comments)"},
+  {k:"r2",label:"Satisfactory with comments"},
+  {k:"r3",label:"Not Satisfactory (NCR raised during the inspection)"},
+  {k:"r4",label:"Not Satisfactory"}
+];
+const ITYPES=["Initial","Interim","Final","Resident"];
+const ROLES=[
+  {k:"IR",label:"Inspection Report (IR)"},{k:"RN",label:"Release Note (RN)"},{k:"FIR",label:"Field Inspection Report (FIR)"},
+  {k:"QAP",label:"QAP / ITP"},{k:"PO",label:"Purchase Orders (PO)"},{k:"SUP",label:"Drawings, specifications, certificates, test reports, others"}
+];
+const SUBTYPES=["Drawing","Specification","Certificate","Test report","Calibration certificate","Other"];
+
+/* ---------- form state ---------- */
+function blankForm(){
+  const f={exampleLoaded:false,reportNo:"",numExc:{on:false,format:"",reason:"",status:"Pending review"},
+    basic:{},poExc:{},inspDate:"",reportDate:"",itype:{},result:{},openNC:"",openPunch:"",rnIssued:"",rnNo:"",
+    secG:"",secH:"",summary:"",stamp:{},stampNo:"",stampOther:"",qapStatus:"",qapStages:[],repStages:[],
+    e4:"",e5:"",photos:"",sigInsp:"",sigChk:"",bvStamp:"",attachments:[],calib:[],manual:{},matTable:null};
+  R.basicFields.forEach(b=>{f.basic[b.key]="";if(b.po)f.poExc[b.key]={on:false,reason:"",status:"Pending review"}});
+  ITYPES.forEach(t=>f.itype[t]=false);RESULTS.forEach(r=>f.result[r.k]=false);
+  MANUAL.forEach(m=>f.manual[m.key]={st:"Not checked",note:""});
+  return f;
+}
+function exampleForm(){
+  const f=blankForm();
+  Object.assign(f,{exampleLoaded:true,reportNo:"ABCL/AHD/RFX2/452101/IR/0123",inspDate:"2026-11-02",reportDate:"2026-11-03",
+    openNC:"No",openPunch:"Yes",rnIssued:"Yes",rnNo:"",secG:"",secH:"P-01: Paint touch-up required on 2 valves (Tag GV-07, GV-11).",
+    summary:"Visual and dimensional inspection carried out and hydrostatic shell test witnessed on 24 Nos gate valves.",
+    stampNo:"",qapStatus:"Available",e4:"",e5:"Not covered in BVIL scope, hence excluded",
+    photos:"Present",sigInsp:"Present",sigChk:"Unclear",bvStamp:"Present"});
+  Object.assign(f.basic,{client:"ABC Refineries Ltd (example)",vendor:"Sample Valves Pvt Ltd (example)",location:"Vadodara works",
+    project:"RFX-2 Expansion",subVendor:"",distribution:"NA",ipoRef:"NA",clientPo:"PO not available – client to share later",
+    vendorPo:"45210",item:"Gate valves 6\" Class 300",qty:"24 Nos",inspector:"R. Shah"});
+  f.itype.Final=true;f.result.r1=true;f.stamp.s1=true;
+  f.qapStages=[{id:"5.1",desc:"Hydrostatic shell test",type:"W",relevant:"Yes"},{id:"5.2",desc:"Seat leak test",type:"W",relevant:"Yes"},
+    {id:"6.1",desc:"Final visual and dimensional check",type:"H",relevant:"Yes"},{id:"4.3",desc:"Material test certificate review",type:"R",relevant:"Yes"},
+    {id:"3.2",desc:"In-process machining surveillance",type:"S",relevant:"No"}];
+  f.repStages=[{sec:"E1",id:"5.1",result:"Witnessed, no leakage observed"},{sec:"E1",id:"6.1",result:"Found as per drawing"},
+    {sec:"E1",id:"4.3",result:"MTCs reviewed, acceptable"},{sec:"E2",id:"All",result:"Not Applicable"}];
+  f.attachments=[{name:"Hydrotest chart",status:"Not found"},{name:"Dimensional report",status:"Found"}];
+  f.calib=[{inst:"Pressure gauge",id:"PG-114",cal:"2025-10-10",due:"2026-10-09"},{inst:"Vernier caliper",id:"VC-22",cal:"2026-05-01",due:"2027-04-30"}];
+  return f;
+}
+let F=load("ird.form.v1");
+if(!F){F=exampleForm()}
+else{const b=blankForm();for(const k in b) if(F[k]==null) F[k]=b[k];
+  R.basicFields.forEach(x=>{if(F.basic[x.key]==null)F.basic[x.key]="";if(x.po&&!F.poExc[x.key])F.poExc[x.key]={on:false,reason:"",status:"Pending review"}});
+  MANUAL.forEach(m=>{if(!F.manual[m.key])F.manual[m.key]={st:"Not checked",note:""}});}
+const saveForm=()=>store("ird.form.v1",F);
+
+/* ---------- files (memory only) ---------- */
+let FILES=[];
+let LOG=load("ird.log.v1")||[];
+const saveLog=()=>store("ird.log.v1",LOG);
+
+async function extract(rec,file){
+  const ext=(file.name.split(".").pop()||"").toLowerCase();
+  try{
+    if(ext==="pdf"){
+      if(!window.pdfjsLib){rec.status="error";rec.note="PDF reader did not load (no internet connection?). Review this file manually.";return}
+      const buf=await file.arrayBuffer();
+      const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+      rec.items=[];
+      for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const tc=await p.getTextContent();rec.pages.push(tc.items.map(t=>t.str).join(" ").replace(/\s+/g," "));
+        rec.items.push(tc.items.filter(t=>t.str&&t.str.trim()).map(t=>({s:t.str,x:t.transform[4],y:t.transform[5],w:t.width})))}
+      const chars=rec.pages.join("").replace(/\s/g,"").length;
+      if(chars<30*pdf.numPages){rec.status="scan";rec.note=`${pdf.numPages} page(s), little or no text layer. Likely scanned.`}
+      else{rec.status="text";rec.note=`${pdf.numPages} page(s), text extracted.`}
+    }else if(ext==="docx"){
+      if(!window.mammoth){rec.status="error";rec.note="Word reader did not load (no internet connection?). Review this file manually.";return}
+      const r=await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()});
+      rec.pages=[r.value.replace(/[ \t]+/g," ")];rec.paged=false;
+      try{rec.html=(await mammoth.convertToHtml({arrayBuffer:await file.arrayBuffer()})).value}catch(e){rec.html=""}
+      rec.status=r.value.trim().length>30?"text":"scan";rec.note=rec.status==="text"?"Text extracted (Word files have no fixed page numbers).":"No readable text found.";
+    }else if(ext==="doc"){rec.status="unsupported";rec.note="Legacy .doc text cannot be read in this version. Save as .docx or PDF, or review manually."}
+    else if(["jpg","jpeg","png","tif","tiff","bmp","gif","webp"].includes(ext)){rec.status="scan";rec.note="Image file. No text extraction in this version."}
+    else{rec.status="unsupported";rec.note="File type not supported for text extraction."}
+  }catch(e){rec.status="error";rec.note="Could not read this file: "+(e.message||e)}
+}
+async function addFiles(role,list){
+  for(const file of list){
+    const rec={id:uid(),role,sub:role==="SUP"?"Other":"",name:file.name,size:file.size,file,items:[],pages:[],paged:true,status:"reading",note:"Reading…"};
+    if(role==="IR"&&F.exampleLoaded){F=blankForm();saveForm();renderForm();toast("Example entries cleared. Entries now belong to your report.")}
+    FILES.push(rec);renderDocs();
+    await extract(rec,file);
+    if(role==="IR"&&rec.status==="text"){const no=detectReportNo(rec);if(no&&!norm(F.reportNo)){F.reportNo=no;saveForm();toast("Report number read from the report: "+no)}
+      const mt=rec.html?parseMatHTML(rec.html,rec.name):parseMatPDF(rec);
+      F.matTable=mt||{found:false,file:rec.name,rows:[],cols:[]};saveForm();renderForm();}
+    renderDocs();scheduleReview();
+  }
+}
+/* report number as printed on the report, e.g. "INSPECTION REPORT N°  ADANI / NGP / BUTIBORI / 4757 / IR-01 , Rev-00" */
+const RN_LABEL=/inspection\s*report\s*(?:n\s*[°º]|no\.?|number|ref\.?)\s*[:.\-]?\s*/i;
+function detectReportNo(rec){
+  const blocks=rec.items&&rec.items.length?rec.items.map(pageLines).flat().map(l=>l.t):(rec.pages||[]).join("\n").split(/\n/);
+  for(const t of blocks){const m=t.match(new RegExp(RN_LABEL.source+"(.*\\/.*)$","i"));if(m)return m[1].trim().replace(/\s{2,}/g," ")}
+  return "";
+}
+/* ---------- material / item table ---------- */
+const MAT_COLS=[
+  {k:"desc",label:"Material / Subject of inspection",what:"material description",re:/material|subject\s*of/i},
+  {k:"tag",label:"Item / Tag Nr",what:"item / tag numbers",re:/item\s*\/|tag\s*n/i},
+  {k:"qtyPo",label:"Qty as per P/O",what:"quantity as per the PO",re:/as\s*per\s*p\s*\/?\s*o|p\s*\/\s*o\b/i},
+  {k:"qtyOff",label:"Qty offered for inspection",what:"quantity offered for inspection",re:/offered/i},
+  {k:"qtyAcc",label:"Accepted Qty (in Nos)",what:"accepted quantity in Nos",re:/accepted/i}];
+const MAT_HEAD=/material\s*\/?\s*subject\s*of\s*inspection/i;
+const MAT_HEADTOK=/material\s*\/|subject\s*of|item\s*\/\s*tag|tag\s*n|\bqty\b|quantity|as\s*per\s*p\s*\/?\s*o|offered\s*for|accepted|in\s*nos|refer\s*to\s*attachment|indicate\s*if|provided\s*in|attachment\)|^\s*inspection\s*$/i;
+const MAT_STOP=/inspection\s*result|inspection\s*summary|^\s*summary|traceab|^\s*[A-Z]\s?\d?\s*[.:)]\s+[A-Z]{3}|^\s*(section|part)\s+[A-Z]\b/i;
+function parseMatPDF(rec){
+  for(let pi=0;pi<(rec.items||[]).length;pi++){
+    const its=rec.items[pi],lines=pageLines(its),hi=lines.findIndex(l=>MAT_HEAD.test(l.t));
+    if(hi<0)continue;
+    const hy=lines[hi].y;let he=hi;
+    while(he+1<lines.length&&hy-lines[he+1].y<90&&MAT_HEADTOK.test(lines[he+1].t))he++;
+    const inHead=new Set(lines.slice(hi,he+1).map(l=>l.y));
+    const hItems=its.filter(t=>[...inHead].some(y=>Math.abs(y-t.y)<=3));
+    const cx=t=>t.x+(t.w||t.s.length*5)/2;
+    const anchors=MAT_COLS.map(c=>{const a=hItems.find(t=>c.re.test(t.s));return a?{...c,ax:cx(a)}:null}).filter(Boolean);
+    if(anchors.length<2)continue;
+    hItems.forEach(t=>{let best=null,bd=1e9;anchors.forEach(a=>{const d=Math.abs(a.ax-cx(t));if(d<bd){bd=d;best=a}});(best.items=best.items||[]).push(t)});
+    anchors.forEach(a=>{const xs=(a.items||[]);a.min=Math.min(...xs.map(t=>t.x));a.max=Math.max(...xs.map(t=>t.x+(t.w||t.s.length*5)))});
+    anchors.sort((a,b)=>a.min-b.min);
+    const bound=anchors.map((a,i)=>i===0?-1e9:(anchors[i-1].max+a.min)/2);
+    const colOf=t=>{let k=anchors[0].k;anchors.forEach((a,i)=>{if(cx(t)>=bound[i])k=a.k});return k};
+    const rows=[];let cur=null,prevY=lines[he].y;
+    for(let li=he+1;li<lines.length&&li<he+60;li++){
+      const L=lines[li];if(prevY-L.y>90||MAT_STOP.test(L.t)||MAT_HEAD.test(L.t))break;prevY=L.y;
+      const lineItems=its.filter(t=>Math.abs(t.y-L.y)<=3).sort((a,b)=>a.x-b.x);const cells={};
+      lineItems.forEach(t=>{const k=colOf(t);(cells[k]=cells[k]||[]).push(t)});
+      const other=Object.keys(cells).some(k=>k!=="desc");
+      if(other||!cur){cur={pos:{}};anchors.forEach(a=>cur[a.k]="");rows.push(cur)}
+      Object.entries(cells).forEach(([k,ts])=>{const txt=ts.map(t=>t.s).join(" ").replace(/\s+/g," ").trim();
+        cur[k]=(cur[k]?cur[k]+" ":"")+txt;
+        if(!cur.pos[k])cur.pos[k]={file:rec.name,pi,x:ts[0].x,y:L.y,xe:ts.at(-1).x+(ts.at(-1).w||5)}});
+    }
+    const headPos={file:rec.name,pi,x:lines[hi].x,y:hy,xe:lines[hi].xe};
+    rows.forEach(r=>anchors.forEach(a=>{if(!r.pos[a.k]){const ref=Object.values(r.pos)[0];
+      r.pos[a.k]={file:rec.name,pi,x:Math.max(a.min,0),y:ref?ref.y:hy-30,xe:a.max}}}));
+    return {found:true,file:rec.name,page:pi+1,cols:anchors.map(a=>a.k),rows,headPos};
+  }
+  return null;
+}
+function parseMatHTML(html,file){
+  const d=new DOMParser().parseFromString(html,"text/html");
+  for(const tb of d.querySelectorAll("table")){
+    const trs=[...tb.rows],hi=trs.findIndex(r=>MAT_HEAD.test(r.textContent));if(hi<0)continue;
+    const map=[...trs[hi].cells].map(c=>{const m=MAT_COLS.find(x=>x.re.test(c.textContent));return m?m.k:null});
+    if(map.filter(Boolean).length<2)continue;
+    const rows=[];
+    trs.slice(hi+1).forEach(tr=>{const cells=[...tr.cells].map(c=>c.textContent.replace(/\s+/g," ").trim());
+      if(!cells.some(Boolean))return;if(cells.every(c=>!c||MAT_HEADTOK.test(c)))return;
+      const r={pos:{}};map.forEach((k,i)=>{if(k)r[k]=cells[i]||""});rows.push(r)});
+    return {found:true,file,page:null,cols:map.filter(Boolean),rows};
+  }
+  return null;
+}
+function rnRe(){
+  const p=norm(F.reportNo).split(",")[0].split("/").map(s=>s.trim()).filter(Boolean);
+  return p.length>=2?new RegExp(p.slice(0,3).map(reEsc).join("\\s*\\/\\s*"),"i"):null;
+}
+function parseRN(raw){
+  let base=norm(raw),rev="";
+  const m=base.match(/[,;\s]*\(?\s*rev(?:ision)?\s*[.:\-]?\s*([A-Za-z0-9]+)\s*\)?\s*$/i);
+  if(m){rev=m[1];base=base.slice(0,m.index).trim()}
+  let p=base.split("/").map(s=>s.trim());let joined=false;
+  if(p.length===5){const j=p[4].match(/^([A-Za-z]{2,4})\s*-\s*(\d+)$/);if(j){p=[...p.slice(0,4),j[1],j[2]];joined=true}}
+  return {base,rev,p,joined};
+}
+function filesOf(role){return FILES.filter(f=>f.role===role)}
+function findPage(re,roles=["IR"]){
+  for(const f of FILES.filter(x=>roles.includes(x.role)&&x.pages.length)){
+    for(let i=0;i<f.pages.length;i++) if(re.test(f.pages[i])) return f.paged?`${f.name} p.${i+1}`:f.name;
+  }return "";
+}
+
+/* ---------- review engine ---------- */
+function isPH(v){return ["na","n/a","nil","-","--","not applicable","none","not available","tbd",".","not issued"].includes(lc(v))}
+function nilLike(v){const s=lc(v).replace(/[.]$/,"");return !s||R.nilWords.map(lc).includes(s)||isPH(s)}
+function has(s,list){return list.some(k=>s.includes(lc(k)))}
+
+function review(){
+  const out=[];
+  const add=(cat,o)=>out.push(Object.assign({cat,doc:"Inspection Report",page:"",target:""},o));
+  const issue=o=>add("issue",o), manual=o=>add("manual",o);
+  const exceptionable=(base,exc,extra)=>{
+    if(exc&&exc.on){
+      if(!norm(exc.reason)) issue({...base,issue:base.issue+" Exception is ticked but the reason / approval reference is blank.",fix:"Enter the reason or approval reference for the exception."});
+      else if(exc.status==="Rejected") issue({...base,issue:base.issue+" (Exception recorded but rejected at review.)"});
+      else add("exception",{...base,exc:{...exc,...(extra||{})}});
+    }else issue(base);
+  };
+
+  /* documents */
+  if(!filesOf("IR").length) manual({id:"doc.noIR",field:"Uploads",issue:"No Inspection Report file uploaded. Checks ran on the entered data only, and page references are unavailable.",fix:"Upload the IR, or confirm the entries were taken from the issued report.",target:"tab:docs"});
+  FILES.forEach(f=>{
+    if(["scan","unsupported","error"].includes(f.status)) manual({id:"doc.read."+f.name,doc:roleLabel(f.role),field:"File: "+f.name,issue:f.note,fix:"Review this document manually; confirm its entries in Report entries.",target:"tab:docs"});
+  });
+
+  /* report number */
+  const rn=norm(F.reportNo), pgNo=rn&&rnRe()?findPage(rnRe()):"";
+  if(!rn) issue({id:"num.blank",field:"Report number",page:findPage(RN_LABEL),issue:"Report number is blank.",fix:"Enter the number as AAA/BBB/CCC/XXX/YY/Report Number.",target:"f_reportNo"});
+  else{
+    const {p}=parseRN(rn),fs=[];
+    if(p.length!==6) fs.push(`Has ${p.length} segment(s); 6 are required (AAA/BBB/CCC/XXX/YY/Report Number).`);
+    else{
+      if(!/^[A-Za-z]{1,4}$/.test(p[0])) fs.push(`AAA (client code) "${p[0]}" must be 1–4 letters.`);
+      if(!/^[A-Za-z]{1,3}$/.test(p[1])) fs.push(`BBB (performing centre) "${p[1]}" must be 1–3 letters.`);
+      if(!/^[A-Za-z]{1,4}$/.test(p[2])) fs.push(`CCC (project reference) "${p[2]}" must be 1–4 letters.`);
+      if(!/^\d{1,5}$/.test(p[3])) fs.push(`XXX (client PO on vendor) "${p[3]}" must be 1–5 digits.`);
+      if(!R.docTypes.map(x=>x.toUpperCase()).includes(p[4].toUpperCase())) fs.push(`YY (document type) "${p[4]}" is not one of ${R.docTypes.join(", ")}.`);
+      if(!/^\d+$/.test(p[5])) fs.push(`Report serial "${p[5]}" must be numeric.`);
+    }
+    if(fs.length) exceptionable({id:"num.format",field:"Report number",page:pgNo,issue:`"${rn}": `+fs.join(" "),fix:"Correct the number to AAA/BBB/CCC/XXX/YY/Report Number, or record the client-specific numbering exception.",target:"f_reportNo"},F.numExc,{kind:"Client-specific numbering system"});
+  }
+
+  /* dates */
+  if(!F.inspDate) issue({id:"date.insp",field:"Inspection date",issue:"Inspection date is blank.",fix:"Enter the inspection date.",target:"f_inspDate"});
+  if(!F.reportDate) issue({id:"date.rep",field:"Report date",issue:"Report date is blank.",fix:"Enter the report date.",target:"f_reportDate"});
+  if(F.inspDate&&F.reportDate&&F.reportDate<F.inspDate) issue({id:"date.order",field:"Report date",issue:`Report date ${F.reportDate} is earlier than the inspection date ${F.inspDate}.`,fix:"Correct either date.",target:"f_reportDate"});
+
+  /* material / item table: every cell must hold what its heading asks for */
+  const MT=F.matTable;
+  if(MT&&MT.found){
+    const cols=MAT_COLS.filter(c=>MT.cols.includes(c.k)),pageRef=MT.page?`${MT.file} p.${MT.page}`:MT.file;
+    if(!MT.rows.length) issue({id:"mat.none",field:"Material table",page:pageRef,at:MT.headPos,issue:"No items are listed under Material / Subject of inspection.",fix:"List each item with its tag numbers and quantities as per the PO.",target:"sec-mat"});
+    const num=v=>{const m=String(v).replace(/,/g,"").match(/-?\d+(\.\d+)?/);return m?parseFloat(m[0]):NaN};
+    const REF=/\b(refer|ref\.|annex|annexure|attached|attachment|see|enclosed|as\s*per\s*(list|annex|attach))\b/i;
+    MT.rows.forEach((row,i)=>{
+      const R1=MT.rows.length>1?`Row ${i+1}: `:"";
+      cols.forEach(c=>{
+        const v=norm(row[c.k]),at=(row.pos||{})[c.k],base={field:"Material table - "+c.label,page:pageRef,at,re:v?new RegExp(reEsc(v.slice(0,25)),"i"):null,target:"sec-mat"};
+        if(!v){issue({...base,id:`mat.${i}.${c.k}.blank`,issue:`${R1}"${c.label}" is blank.`,fix:`Fill in the ${c.what} as per the PO / reference documents.`});return}
+        if(REF.test(v)){
+          const incomplete=/(annex(ure)?|attachment|section)\s*[-–:]?\s*$/i.test(v);
+          issue({...base,id:`mat.${i}.${c.k}.ref`,issue:`${R1}"${c.label}" shows "${v}" instead of the ${c.what}.${incomplete?" The annex reference is also incomplete.":""}`,fix:`Fill in the actual ${c.what} for each item in this column, as per the PO / reference documents.`});return}
+        if(c.k.startsWith("qty")&&isNaN(num(v))) issue({...base,id:`mat.${i}.${c.k}.nan`,issue:`${R1}"${c.label}" shows "${v}", which is not a quantity.`,fix:`Enter the ${c.what} as a number.`});
+        if(c.k==="qtyAcc"&&!isNaN(num(v))&&/[a-z]/i.test(v.replace(/\b(nos?|numbers?)\b\.?/gi,"").replace(/[\d.,\s]/g,""))) issue({...base,id:`mat.${i}.unit`,issue:`${R1}"${c.label}" is "${v}"; the heading asks for the quantity in Nos.`,fix:"State the accepted quantity in Nos."});
+        if(c.k==="tag"&&isPH(v)) manual({...base,id:`mat.${i}.tagna`,issue:`${R1}"${c.label}" is "${v}".`,fix:"Confirm the PO has no item or tag numbers for this material; otherwise enter them."});
+      });
+      const po=num(row.qtyPo),off=num(row.qtyOff),acc=num(row.qtyAcc),at=(row.pos||{}).qtyAcc||(row.pos||{}).qtyOff;
+      if(!isNaN(off)&&!isNaN(acc)&&acc>off) issue({id:`mat.${i}.accoff`,field:"Material table - Accepted Qty",page:pageRef,at,target:"sec-mat",issue:`${R1}Accepted quantity (${acc}) is more than the quantity offered (${off}).`,fix:"Correct the quantities."});
+      if(!isNaN(po)&&!isNaN(off)&&off>po) issue({id:`mat.${i}.offpo`,field:"Material table - Qty offered",page:pageRef,at:(row.pos||{}).qtyOff,target:"sec-mat",issue:`${R1}Quantity offered (${off}) is more than the PO quantity (${po}).`,fix:"Check the PO and correct the quantities."});
+      if(!isNaN(off)&&!isNaN(acc)&&acc<off&&F.result.r1) manual({id:`mat.${i}.rej`,field:"Material table - Accepted Qty",page:pageRef,at,target:"sec-mat",issue:`${R1}Accepted quantity (${acc}) is less than offered (${off}) while the result is Satisfactory (Without comments).`,fix:"Report the rejected quantity and align the result."});
+    });
+  }else if(filesOf("IR").some(f=>f.status==="text")) manual({id:"mat.notfound",field:"Material table",issue:"The Material / Subject of inspection table could not be read from the report.",fix:"Check every column of the table manually against the PO, or enter the rows in Report entries.",target:"sec-mat"});
+
+  /* basic info */
+  R.basicFields.forEach(b=>{
+    const v=norm(F.basic[b.key]),t="f_basic_"+b.key,allowed=b.allowed||[];
+    const alt=allowed.length?`, or "${allowed.join('" / "')}" when not applicable`:"";
+    if(!v){ if(b.mandatory) issue({id:"basic."+b.key,field:b.label,issue:"Field is blank. Blank is not accepted.",fix:`Enter the actual value${alt}.`,target:t}); return;}
+    if(b.po&&/(not\s*available|not\s*received|awaited|to be (shared|provided))/i.test(v)){
+      exceptionable({id:"po."+b.key,field:b.label,issue:`"${v}" entered. "PO not available" is not accepted automatically.`,fix:`Enter the actual PO number${alt}, or record the exception with a reason / reference.`,target:t},F.poExc[b.key],{kind:"PO not available"});return;}
+    if(isPH(v)&&!allowed.map(lc).includes(lc(v))) issue({id:"basic.ph."+b.key,field:b.label,issue:`"${v}" is not an accepted entry for this field.`,fix:allowed.length?`Use "${allowed.join('" or "')}" when not applicable, or enter the actual value.`:"Enter the actual value.",target:t});
+  });
+
+  /* inspection type */
+  const it=ITYPES.filter(t=>F.itype[t]);
+  if(!it.length) issue({id:"itype.none",field:"Inspection type",page:findPage(/inspection type/i),issue:"No inspection type selected.",fix:"Select exactly one: Initial, Interim, Final or Resident.",target:"f_itype"});
+  else if(it.length>1) issue({id:"itype.multi",field:"Inspection type",page:findPage(/inspection type/i),issue:`More than one inspection type selected (${it.join(", ")}).`,fix:"Keep exactly one selection.",target:"f_itype"});
+
+  /* result + matrix */
+  const rs=RESULTS.filter(r=>F.result[r.k]); const pgRes=findPage(/inspection result/i);
+  if(!rs.length) issue({id:"res.none",field:"Inspection result",page:pgRes,issue:"No inspection result selected.",fix:"Select exactly one inspection result.",target:"f_result"});
+  else if(rs.length>1) issue({id:"res.multi",field:"Inspection result",page:pgRes,issue:`More than one inspection result selected: ${rs.map(r=>r.label).join("; ")}.`,fix:"Keep exactly one selection.",target:"f_result"});
+  const nc=F.openNC,pu=F.openPunch,ri=F.rnIssued;
+  if(!nc) issue({id:"m.nc",field:"Open NonConformities",issue:"Not answered (Yes / No).",fix:"Select Yes or No.",target:"f_openNC"});
+  if(!pu) issue({id:"m.pu",field:"Open Punch List Items",issue:"Not answered (Yes / No).",fix:"Select Yes or No.",target:"f_openPunch"});
+  if(!ri) issue({id:"m.rn",field:"Release Note Issued",issue:"Not answered (Yes / No).",fix:"Select Yes or No.",target:"f_rnIssued"});
+  if(rs.length===1){
+    const r=rs[0].k,L=`Result "${rs[0].label}"`;
+    const need={r1:{nc:"No",pu:"No",ri:"Yes"},r2:{ri:"No"},r3:{nc:"Yes",pu:"Yes",ri:"No"},r4:{nc:"No",pu:"No",ri:"No"}}[r];
+    const chk=(val,exp,name,t)=>{if(val&&exp&&val!==exp) issue({id:`m.${r}.${name}`,field:name,page:pgRes,issue:`${L} requires ${name} = ${exp}; the report shows ${val}.`,fix:`Correct ${name}, or re-check the selected result.`,target:t})};
+    chk(nc,need.nc,"Open NonConformities","f_openNC");chk(pu,need.pu,"Open Punch List Items","f_openPunch");chk(ri,need.ri,"Release Note Issued","f_rnIssued");
+    if(r==="r2"&&nc&&pu&&nc!=="Yes"&&pu!=="Yes") issue({id:"m.r2.one",field:"Open NC / Punch",page:pgRes,issue:`${L} requires at least one of Open NonConformities or Open Punch List Items to be Yes; both are No.`,fix:"Record the open items, or change the result.",target:"f_openNC"});
+  }
+  /* RN number */
+  const rnNo=norm(F.rnNo),noVals=R.rnNoValues.map(lc);
+  if(ri==="Yes"){
+    if(!rnNo||isPH(rnNo)) issue({id:"rn.no",doc:"Inspection Report / Release Note",field:"Release Note number",issue:rnNo?`Release Note Issued = Yes, but "${rnNo}" is entered instead of a number.`:"Release Note Issued = Yes, but the Release Note number is blank.",fix:"Enter the actual Release Note number.",target:"f_rnNo"});
+    if(!filesOf("RN").length) manual({id:"rn.file",doc:"Release Note",field:"Release Note",issue:"Release Note is marked as issued but no RN document is uploaded for cross-checking.",fix:"Upload the RN, or confirm its number and details manually.",target:"tab:docs"});
+  }else if(ri==="No"){
+    if(!rnNo) issue({id:"rn.blankno",field:"Release Note number",issue:"Release Note Issued = No and the number field is blank. Blank is not accepted.",fix:`Enter "${R.rnNoValues.join('", "')}".`,target:"f_rnNo"});
+    else if(!noVals.includes(lc(rnNo))) issue({id:"rn.badno",field:"Release Note number",issue:`Release Note Issued = No, but "${rnNo}" is entered.`,fix:`Enter "${R.rnNoValues.join('", "')}", or correct Release Note Issued.`,target:"f_rnNo"});
+  }
+  /* G / H */
+  const gh=(flag,val,sec,name,t)=>{
+    if(flag==="Yes"&&nilLike(val)) issue({id:"sec"+sec,field:"Section "+sec,page:findPage(new RegExp("\\b"+sec+"\\b")),issue:`${name} = Yes, but Section ${sec} has no actual details.`,fix:`Enter the ${name.toLowerCase()} details in Section ${sec}.`,target:t});
+    if(flag==="No"&&!nilLike(val)) manual({id:"sec"+sec+".extra",field:"Section "+sec,issue:`Section ${sec} contains details although ${name} = No.`,fix:"Confirm which is correct and align the report.",target:t});
+  };
+  gh(nc,F.secG,"G","Open NonConformities","f_secG");gh(pu,F.secH,"H","Open Punch List Items","f_secH");
+
+  /* summary */
+  const sRaw=norm(F.summary),s=lc(sRaw),pgS=findPage(/summary/i);
+  if(!sRaw) issue({id:"sum.blank",field:"Inspection Summary",page:pgS,issue:"Inspection Summary is blank.",fix:"State the final inspection outcome in line with the selected result.",target:"f_summary"});
+  else{
+    let stripped=s;R.kwNeg.forEach(k=>stripped=stripped.split(lc(k)).join(" "));
+    const neg=has(s,R.kwNeg),pos=has(stripped,R.kwPos);
+    if(!neg&&!pos) issue({id:"sum.outcome",field:"Inspection Summary",page:pgS,issue:"The summary describes activities but does not state the final outcome.",fix:"Add a clear outcome statement that matches the selected inspection result.",target:"f_summary"});
+    if(rs.length===1){
+      const r=rs[0].k,ctr=m=>issue({id:"sum.contra."+r,field:"Inspection Summary",page:pgS,issue:m,fix:"Make the summary and the selected result agree.",target:"f_summary"});
+      if((r==="r1"||r==="r2")&&neg) ctr(`Summary contains rejection / non-acceptance wording, which contradicts "${rs[0].label}".`);
+      if((r==="r3"||r==="r4")&&pos&&!neg) ctr(`Summary reads as acceptable, which contradicts "${rs[0].label}".`);
+      if(r==="r1"&&has(s,R.kwOpen)) manual({id:"sum.r1open",field:"Inspection Summary",page:pgS,issue:"Summary mentions punch / NC / pending items while the result is Satisfactory (Without comments).",fix:"Confirm no items are open; otherwise change the result.",target:"f_summary"});
+      if(r==="r2"&&!has(s,R.kwOpen)) manual({id:"sum.r2open",field:"Inspection Summary",page:pgS,issue:"Summary does not refer to the open punch / NC items behind \"Satisfactory with comments\".",fix:"Reference the open items in the summary.",target:"f_summary"});
+      if(r==="r3"&&!s.includes("ncr")) issue({id:"sum.r3ncr",field:"Inspection Summary",page:pgS,issue:"Result is Not Satisfactory (NCR raised), but the summary does not state that an NCR was raised.",fix:"State the NCR raised and its reference.",target:"f_summary"});
+      if(r==="r4"){
+        const miss=[];if(!s.includes("reject"))miss.push("complete rejection of the material");if(!has(s,R.kwReoffer))miss.push("the requirement to re-offer inspection");if(!has(s,R.kwNewLot))miss.push("with a new lot");
+        if(miss.length) issue({id:"sum.r4",field:"Inspection Summary",page:pgS,issue:"Result is Not Satisfactory (complete rejection). The summary does not state: "+miss.join("; ")+".",fix:"State complete rejection and that inspection must be re-offered with a new lot.",target:"f_summary"});
+        if(/\bncr\b|punch/.test(s)) manual({id:"sum.r4ncr",field:"Inspection Summary",page:pgS,issue:"Summary mentions NCR / punch items, but complete rejection does not raise NCR or punch points.",fix:"Confirm the result; use \"Not Satisfactory (NCR raised)\" if an NCR was issued.",target:"f_summary"});
+      }
+    }
+  }
+
+  /* stamping */
+  const st=[...R.symbols.map(x=>({k:x.id,label:x.name,sym:true})),{k:"No",label:"No"},{k:"Other",label:"Other"}].filter(x=>F.stamp[x.k]);
+  if(!st.length) issue({id:"stamp.none",field:"BV Traceability Stamping",issue:"No stamping option selected.",fix:"Select exactly one symbol, No, or Other.",target:"f_stamp"});
+  else if(st.length>1) issue({id:"stamp.multi",field:"BV Traceability Stamping",issue:`More than one stamping option selected (${st.map(x=>x.label).join(", ")}).`,fix:"Keep exactly one selection.",target:"f_stamp"});
+  else if(st[0].sym&&!norm(F.stampNo)) issue({id:"stamp.no",field:"BV Traceability Stamping",issue:`Symbol "${st[0].label}" selected without a stamp number.`,fix:"Enter the stamp number.",target:"f_stampNo"});
+  else if(st[0].k==="Other"&&!norm(F.stampOther)) issue({id:"stamp.other",field:"BV Traceability Stamping",issue:"\"Other\" selected without a description.",fix:"Describe the stamping used.",target:"f_stampOther"});
+
+  /* QAP coverage */
+  const qd="Inspection Report vs QAP / ITP";
+  F.repStages.forEach((r,i)=>{
+    if(!norm(r.id)) issue({id:"st.id"+i,doc:qd,field:r.sec||"E1–E3",issue:`Row ${i+1} in ${r.sec||"E1–E3"} has no stage identification.`,fix:"Enter the QAP stage number / identification.",target:"sec-e"});
+    if(!norm(r.result)) issue({id:"st.res"+i,doc:qd,field:r.sec||"E1–E3",issue:`Stage ${r.id||"(row "+(i+1)+")"} has no observed result. Blank is not accepted.`,fix:"Enter the observed result, or \"Not Applicable\" / \"Not conducted\".",target:"sec-e"});
+  });
+  ["E1","E2","E3"].forEach(sec=>{ if(!F.repStages.some(r=>r.sec===sec)) issue({id:"st.blank"+sec,doc:qd,field:"Section "+sec,page:findPage(new RegExp("\\b"+sec+"\\b")),issue:`Section ${sec} is blank.`,fix:`List the relevant ${{E1:"Witness / Hold",E2:"Monitoring / Surveillance",E3:"Review"}[sec]} stages with results, or state "Not Applicable".`,target:"sec-e"})});
+  if(!F.qapStatus) manual({id:"qap.status",doc:"QAP / ITP",field:"QAP coverage",issue:"QAP / ITP availability is not recorded. Coverage of E1–E3: Unable to verify.",fix:"Record whether the QAP is available and enter its stages.",target:"f_qapStatus"});
+  else if(F.qapStatus!=="Available") manual({id:"qap.na",doc:"QAP / ITP",field:"QAP coverage",issue:`QAP / ITP is ${F.qapStatus.toLowerCase()}. Coverage of E1–E3: Unable to verify.`,fix:"Obtain a readable QAP / ITP and re-run the review.",target:"f_qapStatus"});
+  else{
+    if(!filesOf("QAP").length) manual({id:"qap.file",doc:"QAP / ITP",field:"Uploads",issue:"QAP is marked available, but no QAP / ITP file is uploaded.",fix:"Upload the QAP / ITP used for the stage list.",target:"tab:docs"});
+    if(!F.qapStages.length) manual({id:"qap.stages",doc:"QAP / ITP",field:"QAP stages",issue:"QAP stages have not been entered. Coverage of E1–E3: Unable to verify.",fix:"Enter or paste the QAP stages and mark which are relevant to this visit.",target:"sec-qap"});
+    const nid=v=>lc(v).replace(/\s+/g,"").replace(/^stage/,"");
+    const secFor=t=>({W:"E1",H:"E1",M:"E2",S:"E2",R:"E3"})[norm(t).toUpperCase()];
+    F.qapStages.forEach((q,i)=>{
+      const lab=`${q.id||"row "+(i+1)}${q.desc?" ("+q.desc+")":""}`;
+      if(!q.relevant){manual({id:"qap.rel"+i,doc:"QAP / ITP",field:"QAP stages",issue:`Relevance to this visit is not marked for stage ${lab}.`,fix:"Mark Yes or No.",target:"sec-qap"});return}
+      if(q.relevant!=="Yes") return;
+      const exp=secFor(q.type);
+      if(!exp){manual({id:"qap.type"+i,doc:"QAP / ITP",field:"QAP stages",issue:`Intervention type is missing or unknown for stage ${lab}.`,fix:"Set W, H, M, S or R as per the QAP.",target:"sec-qap"});return}
+      const rows=F.repStages.filter(r=>nid(r.id)===nid(q.id));
+      if(!rows.length) issue({id:"qap.miss"+nid(q.id),doc:qd,field:"Section "+exp,issue:`QAP stage ${lab}, type ${q.type.toUpperCase()}, is relevant to this visit but is not reported in ${exp}.`,fix:`Add stage ${q.id} to ${exp} with its observed result, or state "Not Applicable" / "Not conducted".`,target:"sec-e"});
+      else if(!rows.some(r=>r.sec===exp)) issue({id:"qap.sec"+nid(q.id),doc:qd,field:"Section "+rows[0].sec,issue:`Stage ${lab} is a type ${q.type.toUpperCase()} stage, reported in ${rows[0].sec}; it belongs in ${exp}.`,fix:`Move stage ${q.id} to ${exp}.`,target:"sec-e"});
+    });
+    if(F.qapStages.length){
+      const ids=F.qapStages.map(q=>nid(q.id));
+      F.repStages.forEach((r,i)=>{const k=nid(r.id);if(k&&!["all","na","-","—","--"].includes(k)&&!ids.includes(k)) manual({id:"st.unknown"+i,doc:qd,field:r.sec,issue:`Stage "${r.id}" in ${r.sec} does not match any stage in the QAP list.`,fix:"Confirm the stage identification against the QAP.",target:"sec-e"})});
+    }
+  }
+
+  /* E4 / E5 */
+  if(!norm(F.e4)) issue({id:"e4.blank",field:"E4 Problems pending / Areas of concern",page:findPage(/\bE4\b|areas of concern/i),issue:"E4 is blank. Blank is not accepted.",fix:"Record pending problems and concerns, or enter \"Nil\" / \"No pending concerns\".",target:"f_e4"});
+  if(nilLike(F.e4)){
+    const why=[];if(nc==="Yes")why.push("Open NonConformities = Yes");if(pu==="Yes")why.push("Open Punch List Items = Yes");
+    if(why.length) manual({id:"e4.open",field:"E4 Problems pending / Areas of concern",issue:`E4 is blank or Nil while ${why.join(" and ")}.`,fix:"Confirm whether these open items should be listed in E4.",target:"f_e4"});
+    const pg=findPage(new RegExp(R.kwConcern.map(reEsc).join("|"),"i"));
+    if(pg) manual({id:"e4.text",field:"E4 Problems pending / Areas of concern",page:pg,issue:`The report text contains words such as ${R.kwConcern.slice(0,3).map(x=>'"'+x+'"').join(", ")} but E4 records no concern.`,fix:"Read that page and add any unresolved concern to E4.",target:"f_e4"});
+  }
+  if(!norm(F.e5)) issue({id:"e5.blank",field:"E5 Manufacturing progress status",page:findPage(/\bE5\b|manufacturing progress/i),issue:"E5 is blank. Blank is not accepted.",fix:"Record the progress status, or state \"Not covered in BVIL scope, hence excluded\".",target:"f_e5"});
+
+  /* evidence */
+  const ev=(val,id,name,t,absentMsg)=>{
+    if(!val) manual({id,field:name,issue:`${name}: presence not recorded.`,fix:"Check the report and record what is present.",target:t});
+    else if(val==="Absent") issue({id,field:name,issue:absentMsg,fix:`Add the ${name.toLowerCase()} before issue.`,target:t});
+    else if(val==="Unclear") manual({id,field:name,issue:`${name} is unclear or unreadable.`,fix:"Check the original and confirm.",target:t});
+  };
+  ev(F.photos,"ev.photo","Photographs","f_photos","Photographs are required but absent.");
+  ev(F.sigInsp,"ev.sigi","Inspector signature","f_sigInsp","Inspector signature is absent.");
+  ev(F.sigChk,"ev.sigc","Checker signature","f_sigChk","Checker signature is absent.");
+  ev(F.bvStamp,"ev.stamp","Stamp on report","f_bvStamp","Stamp on the report is absent.");
+  F.attachments.forEach((a,i)=>{
+    if(!norm(a.name)) return;
+    if(a.status==="Not found") issue({id:"att."+lc(a.name),field:"Attachments",page:findPage(new RegExp(reEsc(a.name),"i")),issue:`The report states "${a.name}" is attached, but it cannot be found.`,fix:"Attach the document or remove the reference.",target:"sec-ev"});
+    else if(a.status!=="Found") manual({id:"att.u."+lc(a.name),field:"Attachments",issue:`Attachment "${a.name}" has not been confirmed.`,fix:"Confirm whether it is attached.",target:"sec-ev"});
+  });
+
+  /* calibration */
+  if(!F.calib.length) manual({id:"cal.none",field:"Calibration",issue:"No calibration entries recorded.",fix:"Enter instruments used with calibration and due dates, or confirm none were used.",target:"sec-cal"});
+  F.calib.forEach((c,i)=>{
+    const n=`${c.inst||"Instrument"}${c.id?" ("+c.id+")":""}`;
+    if(!F.inspDate){manual({id:"cal.nodate"+i,field:"Calibration",issue:`Cannot check ${n}: inspection date is blank.`,fix:"Enter the inspection date.",target:"f_inspDate"});return}
+    if(!c.cal) manual({id:"cal.c"+i,field:"Calibration",issue:`Calibration date for ${n} is not entered.`,fix:"Enter the calibration date from the certificate.",target:"sec-cal"});
+    else if(c.cal>F.inspDate) issue({id:"cal.after"+i,field:"Calibration",issue:`${n}: calibration date ${c.cal} is after the inspection date ${F.inspDate}.`,fix:"Verify and correct the calibration date or the instrument used.",target:"sec-cal"});
+    if(!c.due) manual({id:"cal.d"+i,field:"Calibration",issue:`Calibration due date for ${n} is not entered.`,fix:"Enter the due date from the certificate.",target:"sec-cal"});
+    else if(c.due<F.inspDate) issue({id:"cal.exp"+i,field:"Calibration",issue:`${n}: calibration expired on ${c.due}, before the inspection date ${F.inspDate}.`,fix:"Use a calibrated instrument; correct the entry or re-inspect.",target:"sec-cal"});
+  });
+
+  /* manual confirmations */
+  MANUAL.forEach(m=>{const v=F.manual[m.key]||{};
+    if(!v.st||v.st==="Not checked") manual({id:"mc."+m.key,doc:"Supporting documents",field:m.label,issue:"Not yet confirmed by a reviewer. This tool does not compare documents automatically.",fix:"Check against the source documents and record the outcome.",target:"f_manual_"+m.key});
+    else if(v.st==="Discrepancy found") issue({id:"mc.d."+m.key,doc:"Supporting documents",field:m.label,issue:"Reviewer recorded a discrepancy"+(norm(v.note)?": "+v.note:" (no detail entered)."),fix:"Correct the report, citing the source document, page and clause.",target:"f_manual_"+m.key});
+  });
+
+  const issues=out.filter(f=>f.cat==="issue"),man=out.filter(f=>f.cat==="manual"),exc=out.filter(f=>f.cat==="exception");
+  const pend=exc.filter(e=>e.exc.status!=="Approved");
+  const status=issues.length?"Issues found":(man.length||pend.length)?"Manual review required":"Complete";
+  return {all:out,issues,man,exc,pend,status};
+}
+function roleLabel(k){return (ROLES.find(r=>r.k===k)||{}).label||k}
+
+/* ---------- tabs ---------- */
+let TAB="docs";
+function showTab(t){TAB=t;document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
+  ["docs","form","review","rules","log"].forEach(k=>$("#tab-"+k).hidden=k!==t);
+  if(t==="review"){runCheck();renderReview()}if(t==="log")renderLog();if(t==="docs")renderDocs();
+  try{localStorage.setItem("ird.tab",t)}catch(e){}}
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest("button");if(b)showTab(b.dataset.tab)});
+
+/* ---------- documents tab ---------- */
+function renderDocs(){
+  const g=$("#dropGrid");
+  g.innerHTML=ROLES.map(r=>`<div class="panel"><header><h3>${esc(r.label)}</h3><span class="count">${filesOf(r.k).length} file(s)</span></header>
+    <div class="body"><label class="drop" data-role="${r.k}" for="up_${r.k}"><input type="file" id="up_${r.k}" data-up="${r.k}" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.tif,.tiff">
+    <b>Add files</b><br><span class="small muted">PDF, Word (.doc/.docx) or scans · drop here or click</span></label>
+    <div class="files">${filesOf(r.k).map(fileCard).join("")}</div></div></div>`).join("");
+}
+function fileCard(f){
+  const cls={text:"c-ok",scan:"c-warn",unsupported:"c-warn",error:"c-bad",reading:"c-n"}[f.status];
+  const lab={text:"Text read",scan:"Manual review",unsupported:"Manual review",error:"Not read",reading:"Reading…"}[f.status];
+  let sug="";
+  if(f.status==="text"&&(f.role==="IR"||f.role==="RN"||f.role==="FIR")) sug=suggestions(f);
+  return `<div class="file"><div class="row"><span class="name">${esc(f.name)}</span><span class="chip ${cls}">${lab}</span>
+    <button class="btn sm ghost danger" type="button" data-rm="${f.id}" aria-label="Remove ${esc(f.name)}">Remove</button></div>
+    <div class="small muted">${esc(f.note)} · ${(f.size/1024).toFixed(0)} KB</div>
+    ${f.role==="SUP"?`<label class="small">Document role <select data-sub="${f.id}">${SUBTYPES.map(s=>`<option ${s===f.sub?"selected":""}>${s}</option>`).join("")}</select></label>`:""}
+    ${sug}
+    ${f.pages.length?`<details><summary>Show extracted text</summary><pre class="text">${esc(f.pages.map((p,i)=>(f.paged?`--- page ${i+1} ---\n`:"")+p).join("\n").slice(0,6000))}</pre></details>`:""}</div>`;
+}
+let SUGG={};
+function suggestions(f){
+  const txt=f.pages.map((p,i)=>({p,i}));const items=[];
+  const seen=new Set();
+  txt.forEach(({p,i})=>{(p.match(/\b[A-Z0-9]{1,8}(?:\s?\/\s?[A-Z0-9-]{1,10}){4,6}\b/g)||[]).forEach(m=>{const v=m.replace(/\s/g,"");if(!seen.has(v)&&f.role==="IR"){seen.add(v);items.push({k:"reportNo",v,label:"Possible report number",pg:i})}})});
+  txt.forEach(({p,i})=>{const m=p.match(/summary[:\s]+(.{30,500}?)(?=\s(?:E\s?1|E1\b|section|inspection result|$))/i);if(m&&f.role==="IR"&&!items.some(x=>x.k==="summary"))items.push({k:"summary",v:m[1].trim(),label:"Possible summary text",pg:i})});
+  txt.forEach(({p,i})=>{(p.match(/[^.]{0,80}\b(attached|enclosed|annexure)\b[^.]{0,80}/gi)||[]).slice(0,6).forEach(m=>items.push({k:"att",v:m.trim(),label:"Attachment reference",pg:i}))});
+  txt.forEach(({p,i})=>{(p.match(/[^.]{0,60}calibrat[^.]{0,80}/gi)||[]).slice(0,4).forEach(m=>items.push({k:"cal",v:m.trim(),label:"Calibration mention",pg:i}))});
+  if(!items.length) return `<div class="small muted">No values recognised in the text. Enter them manually.</div>`;
+  return `<details open><summary>Suggestions from the text (confirm before use)</summary><div class="sugg">${items.slice(0,14).map(it=>{const id=uid();SUGG[id]=it;
+    const btn=it.k==="reportNo"?"Use as report number":it.k==="summary"?"Use as summary":it.k==="att"?"Add to attachments list":"";
+    return `<div class="s"><span><b>${esc(it.label)}</b>${f.paged?` <span class="mono muted">p.${it.pg+1}</span>`:""}: ${esc(it.v)}</span>${btn?`<button class="btn sm" type="button" data-sug="${id}">${btn}</button>`:""}</div>`}).join("")}</div></details>`;
+}
+document.addEventListener("click",e=>{
+  const rm=e.target.closest("[data-rm]");if(rm){FILES=FILES.filter(f=>f.id!==rm.dataset.rm);renderDocs();scheduleReview();return}
+  const sg=e.target.closest("[data-sug]");if(sg){const it=SUGG[sg.dataset.sug];if(!it)return;
+    if(it.k==="reportNo")F.reportNo=it.v;else if(it.k==="summary")F.summary=it.v;else if(it.k==="att")F.attachments.push({name:it.v.slice(0,120),status:""});
+    saveForm();renderForm();scheduleReview();toast("Added to Report entries");}
+});
+document.addEventListener("change",e=>{
+  const up=e.target.closest("[data-up]");if(up){addFiles(up.dataset.up,[...up.files]);up.value="";return}
+  const sb=e.target.closest("[data-sub]");if(sb){const f=FILES.find(x=>x.id===sb.dataset.sub);if(f)f.sub=sb.value}
+});
+document.addEventListener("dragover",e=>{const d=e.target.closest(".drop");if(d){e.preventDefault();d.classList.add("over")}});
+document.addEventListener("dragleave",e=>{const d=e.target.closest(".drop");if(d)d.classList.remove("over")});
+document.addEventListener("drop",e=>{const d=e.target.closest(".drop");if(d){e.preventDefault();d.classList.remove("over");addFiles(d.dataset.role,[...e.dataTransfer.files])}});
+
+/* ---------- form tab ---------- */
+const idOf=p=>"f_"+p.replace(/\./g,"_");
+function inp(path,label,hint,type="text"){const v=getPath(F,path)??"";return `<div class="fld"><label for="${idOf(path)}">${esc(label)}</label><input type="${type}" id="${idOf(path)}" data-f="${path}" value="${esc(v)}">${hint?`<span class="hint">${esc(hint)}</span>`:""}</div>`}
+function sel(path,label,opts,hint){const v=getPath(F,path)??"";return `<div class="fld"><label for="${idOf(path)}">${esc(label)}</label><select id="${idOf(path)}" data-f="${path}"><option value="">— select —</option>${opts.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}</select>${hint?`<span class="hint">${esc(hint)}</span>`:""}</div>`}
+function ta(path,label,hint){return `<div class="fld"><label for="${idOf(path)}">${esc(label)}</label><textarea id="${idOf(path)}" data-f="${path}">${esc(getPath(F,path)??"")}</textarea>${hint?`<span class="hint">${esc(hint)}</span>`:""}</div>`}
+function tick(path,label,img){return `<label class="tick"><input type="checkbox" data-f="${path}" ${getPath(F,path)?"checked":""}>${img?`<img src="${img}" alt="">`:""}${esc(label)}</label>`}
+function panel(id,code,title,desc,body){return `<section class="panel" id="${id}"><header>${code?`<span class="code">${esc(code)}</span>`:""}<h3>${esc(title)}</h3>${desc?`<p>${desc}</p>`:""}</header><div class="body">${body}</div></section>`}
+function excBlock(path,title,withFormat){const x=getPath(F,path)||{};
+  return `<div class="exc"><label><input type="checkbox" data-f="${path}.on" ${x.on?"checked":""} data-rerender="1"> ${esc(title)}</label>${x.on?`<div class="fields">
+   ${withFormat?inp(path+".format","Required format (client)","e.g. CLIENT-PROJ-IR-####"):""}${inp(path+".reason","Reason / approval reference","")}
+   ${sel(path+".status","Review status",["Pending review","Approved","Rejected"])}</div><span class="small muted">The original finding stays visible under Recorded exceptions.</span>`:""}</div>`}
+
+const SECTIONS=[["sec-num","Report number"],["sec-basic","Basic information"],["sec-mat","Material / items"],["sec-type","Inspection type & result"],["sec-sum","Inspection summary"],["sec-stamp","Traceability stamping"],["sec-qap","QAP / ITP stages"],["sec-e","E1–E3 reported stages"],["sec-e45","E4 and E5"],["sec-ev","Evidence & attachments"],["sec-cal","Calibration"],["sec-man","Manual confirmations"]];
+function renderForm(){
+  $("#exampleNote").hidden=!F.exampleLoaded;
+  $("#secnav").innerHTML=SECTIONS.map(([id,l])=>`<a href="#" data-jump="${id}">${l}</a>`).join("");
+  const resRows=[["Satisfactory (Without comments)","No","No","Yes"],["Satisfactory with comments","At least one Yes","At least one Yes","No"],["Not Satisfactory (NCR raised)","Yes","Yes","No"],["Not Satisfactory (complete rejection)","No","No","No"]];
+  const sym=[...R.symbols.map(s=>tick("stamp."+s.id,s.name,s.img)),tick("stamp.No","No"),tick("stamp.Other","Other")].join("");
+  $("#formRoot").innerHTML=[
+    `<div class="note"><span>Enter what the report actually shows, including any errors. Every check runs on these entries. Changes are saved in this browser and the verdict updates as you type.</span><button class="btn sm" type="button" data-newreport>New report</button></div>`,
+    panel("sec-num","","Report number","Format: <span class=\"mono\">AAA/BBB/CCC/XXX/YY/Report Number</span> — AAA client (≤4 letters), BBB centre (≤3 letters), CCC project (≤4 letters), XXX client PO on vendor (≤5 digits), YY document type, then numeric serial.",
+      `<div class="fields">${inp("reportNo","Inspection Report number","")}${inp("inspDate","Inspection date","","date")}${inp("reportDate","Report date","","date")}</div>${excBlock("numExc","Client-specific numbering system",true)}`),
+    panel("sec-basic","","Basic information","Blank is not accepted for mandatory fields.",
+      `<div class="fields">${R.basicFields.map(b=>inp("basic."+b.key,b.label+(b.mandatory?"":" (optional)"),b.allowed?.length?`If not applicable: ${b.allowed.join(" / ")}`:"")).join("")}</div>
+       ${R.basicFields.filter(b=>b.po).map(b=>/(not\s*available|not\s*received|awaited|to be (shared|provided))/i.test(F.basic[b.key]||"")?excBlock("poExc."+b.key,`Record "PO not available" exception for ${b.label}`):"").join("")}`),
+    matPanel(),
+    panel("sec-type","","Inspection type & result","Tick every box that is ticked on the report, so missing or multiple selections can be caught.",
+      `<div class="fld" id="f_itype"><span class="lbl">Inspection type</span><div class="ticks">${ITYPES.map(t=>tick("itype."+t,t)).join("")}</div></div>
+       <div class="fld" id="f_result"><span class="lbl">Inspection result</span><div class="ticks">${RESULTS.map(r=>tick("result."+r.k,r.label)).join("")}</div></div>
+       <div class="fields">${sel("openNC","Open NonConformities",["Yes","No"])}${sel("openPunch","Open Punch List Items",["Yes","No"])}${sel("rnIssued","Release Note Issued",["Yes","No"])}${inp("rnNo","Release Note number",'If not issued: "--", "Not Applicable" or "Not issued"')}</div>       <div class="fields">${ta("secG","Section G — Open NonConformity details","Required when Open NonConformities = Yes")}${ta("secH","Section H — Open Punch List details","Required when Open Punch List Items = Yes")}</div>`),
+    panel("sec-sum","","Inspection summary","Must state the final outcome and agree with the selected result. A list of activities alone is not enough.",ta("summary","Inspection summary text","")),
+    panel("sec-stamp","","BV Traceability Stamping","Exactly one option. A symbol needs a stamp number; Other needs a description.",
+      `<div class="ticks" id="f_stamp">${sym}</div><div class="fields">${inp("stampNo","Stamp number","")}${inp("stampOther","Description (for Other)","")}</div>`),
+    panel("sec-qap","","QAP / ITP stages","List the QAP stages and mark which apply to this visit. Types: W Witness, H Hold → E1 · M Monitoring, S Surveillance patrol → E2 · R Review → E3.",
+      `<div class="fields">${sel("qapStatus","QAP / ITP status",["Available","Not available","Unreadable"])}</div>
+       <div class="tablewrap"><table class="tbl"><thead><tr><th>Stage ID</th><th>Description</th><th>Type</th><th>Relevant to this visit</th><th></th></tr></thead><tbody>
+       ${F.qapStages.map((q,i)=>`<tr><td><input type="text" data-arr="qapStages" data-i="${i}" data-p="id" value="${esc(q.id)}" aria-label="Stage ID"></td><td><input type="text" data-arr="qapStages" data-i="${i}" data-p="desc" value="${esc(q.desc)}" aria-label="Description"></td>
+       <td><select data-arr="qapStages" data-i="${i}" data-p="type" aria-label="Type"><option value=""></option>${["W","H","M","S","R"].map(t=>`<option ${q.type===t?"selected":""}>${t}</option>`).join("")}</select></td>
+       <td><select data-arr="qapStages" data-i="${i}" data-p="relevant" aria-label="Relevant"><option value=""></option>${["Yes","No"].map(t=>`<option ${q.relevant===t?"selected":""}>${t}</option>`).join("")}</select></td>
+       <td class="x"><button class="btn sm ghost danger" type="button" data-del="qapStages" data-i="${i}">Remove</button></td></tr>`).join("")||`<tr><td colspan="5" class="muted">No stages entered.</td></tr>`}</tbody></table></div>
+       <div class="ticks"><button class="btn sm" type="button" data-addrow="qapStages">Add stage</button></div>
+       <details><summary>Paste stages from the QAP</summary><div class="fld" style="margin-top:8px"><label for="qapPaste">One stage per line: ID | Description | Type (W/H/M/S/R)</label><textarea id="qapPaste" placeholder="5.1 | Hydrostatic shell test | W"></textarea><div><button class="btn sm" type="button" id="qapPasteBtn">Add pasted stages</button></div></div></details>`),
+    panel("sec-e","","E1–E3 reported stages","Enter each stage as reported. E1: Witness and Hold · E2: Monitoring and Surveillance patrol · E3: Review. \"Not Applicable\" or \"Not conducted\" is acceptable; blank is not.",
+      `<div class="tablewrap"><table class="tbl"><thead><tr><th>Section</th><th>Stage ID</th><th>Observed result</th><th></th></tr></thead><tbody>
+       ${F.repStages.map((r,i)=>`<tr><td><select data-arr="repStages" data-i="${i}" data-p="sec" aria-label="Section">${["E1","E2","E3"].map(t=>`<option ${r.sec===t?"selected":""}>${t}</option>`).join("")}</select></td>
+       <td><input type="text" data-arr="repStages" data-i="${i}" data-p="id" value="${esc(r.id)}" aria-label="Stage ID"></td><td><input type="text" data-arr="repStages" data-i="${i}" data-p="result" value="${esc(r.result)}" aria-label="Observed result"></td>
+       <td class="x"><button class="btn sm ghost danger" type="button" data-del="repStages" data-i="${i}">Remove</button></td></tr>`).join("")||`<tr><td colspan="4" class="muted">No stages entered.</td></tr>`}</tbody></table></div>
+       <div class="ticks"><button class="btn sm" type="button" data-addrow="repStages">Add reported stage</button></div>`),
+    panel("sec-e45","","E4 and E5","",
+      `<div class="fields">${ta("e4","E4 — Problems pending / Areas of concern",'If none: "Nil" or "No pending concerns"')}${ta("e5","E5 — Manufacturing progress status",'Or: "Not covered in BVIL scope, hence excluded"')}</div>`),
+    panel("sec-ev","","Evidence, signatures & attachments","Presence only. This tool cannot confirm that a signature is genuine.",
+      `<div class="fields">${sel("photos","Photographs",["Present","Absent","Unclear","Not required"])}${sel("sigInsp","Inspector signature",["Present","Absent","Unclear"])}${sel("sigChk","Checker signature",["Present","Absent","Unclear","Not applicable"])}${sel("bvStamp","Stamp on report",["Present","Absent","Unclear","Not applicable"])}</div>
+       <div class="lbl">Documents the report says are attached</div>
+       <div class="tablewrap"><table class="tbl"><thead><tr><th>Referenced attachment</th><th>Status</th><th></th></tr></thead><tbody>
+       ${F.attachments.map((a,i)=>`<tr><td><input type="text" data-arr="attachments" data-i="${i}" data-p="name" value="${esc(a.name)}" aria-label="Attachment"></td>
+       <td><select data-arr="attachments" data-i="${i}" data-p="status" aria-label="Status"><option value="">Not confirmed</option>${["Found","Not found","Unclear"].map(t=>`<option ${a.status===t?"selected":""}>${t}</option>`).join("")}</select>${matchHint(a.name)}</td>
+       <td class="x"><button class="btn sm ghost danger" type="button" data-del="attachments" data-i="${i}">Remove</button></td></tr>`).join("")||`<tr><td colspan="3" class="muted">None listed.</td></tr>`}</tbody></table></div>
+       <div class="ticks"><button class="btn sm" type="button" data-addrow="attachments">Add referenced attachment</button></div>`),
+    panel("sec-cal","","Calibration","Each instrument is checked against the inspection date: calibration after inspection, or due date before inspection, is flagged.",
+      `<div class="tablewrap"><table class="tbl"><thead><tr><th>Instrument</th><th>ID</th><th>Calibration date</th><th>Due date</th><th></th></tr></thead><tbody>
+       ${F.calib.map((c,i)=>`<tr><td><input type="text" data-arr="calib" data-i="${i}" data-p="inst" value="${esc(c.inst)}" aria-label="Instrument"></td><td><input type="text" data-arr="calib" data-i="${i}" data-p="id" value="${esc(c.id)}" aria-label="ID"></td>
+       <td><input type="date" data-arr="calib" data-i="${i}" data-p="cal" value="${esc(c.cal)}" aria-label="Calibration date"></td><td><input type="date" data-arr="calib" data-i="${i}" data-p="due" value="${esc(c.due)}" aria-label="Due date"></td>
+       <td class="x"><button class="btn sm ghost danger" type="button" data-del="calib" data-i="${i}">Remove</button></td></tr>`).join("")||`<tr><td colspan="5" class="muted">No instruments entered.</td></tr>`}</tbody></table></div>
+       <div class="ticks"><button class="btn sm" type="button" data-addrow="calib">Add instrument</button></div>`),
+    panel("sec-man","","Manual confirmations","Document matching is not automated in this version. Record what you checked; anything left as \"Not checked\" keeps the report in manual review.",
+      MANUAL.map(m=>`<div class="fields">${sel("manual."+m.key+".st",m.label,["Not checked","Confirmed OK","Discrepancy found","Not applicable"])}${inp("manual."+m.key+".note","Note / source reference","Document, page, clause, expected vs reported")}</div>`).join(""))
+  ].join("");
+  document.querySelectorAll('#formRoot select[data-f$=".st"] option[value=""]').forEach(o=>o.remove());
+}
+function matchHint(name){
+  if(!norm(name)||!FILES.length) return "";
+  const words=lc(name).split(/[^a-z0-9]+/).filter(w=>w.length>3);
+  const hit=FILES.find(f=>words.some(w=>lc(f.name).includes(w)));
+  return hit?`<div class="small muted">Possible match: ${esc(hit.name)}</div>`:"";
+}
+function arrOf(name){
+  if(name==="mat"){if(!F.matTable||!F.matTable.found)F.matTable={found:true,file:"Entered manually",page:null,cols:MAT_COLS.map(c=>c.k),rows:[]};return F.matTable.rows}
+  return F[name];
+}
+function matPanel(){
+  const MT=F.matTable,cols=MAT_COLS.filter(c=>!MT||!MT.found||MT.cols.includes(c.k));
+  const src=MT&&MT.found?(MT.file==="Entered manually"?"Entered manually.":`Read from ${esc(MT.file)}${MT.page?", page "+MT.page:""}. Correct any cell that was read wrongly.`):MT?`Not found in ${esc(MT.file)}. Enter the rows below to check them.`:"Read automatically when the Inspection Report is uploaded.";
+  const rows=MT&&MT.found?MT.rows:[];
+  return panel("sec-mat","","Material / items","Every cell must hold what its heading asks for. A reference such as \"Refer Annex\" or a blank cell is flagged for correction as per the PO / reference documents. "+src,
+    `<div class="tablewrap"><table class="tbl"><thead><tr>${cols.map(c=>`<th>${esc(c.label)}</th>`).join("")}<th></th></tr></thead><tbody>
+    ${rows.map((r,i)=>`<tr>${cols.map(c=>`<td><input type="text" data-arr="mat" data-i="${i}" data-p="${c.k}" value="${esc(r[c.k]||"")}" aria-label="${esc(c.label)}"></td>`).join("")}<td class="x"><button class="btn sm ghost danger" type="button" data-del="mat" data-i="${i}">Remove</button></td></tr>`).join("")||`<tr><td colspan="${cols.length+1}" class="muted">No rows.</td></tr>`}</tbody></table></div>
+    <div class="ticks"><button class="btn sm" type="button" data-addrow="mat">Add row</button></div>`);
+}
+const BLANK_ROWS={mat:{desc:"",tag:"",qtyPo:"",qtyOff:"",qtyAcc:"",pos:{}},qapStages:{id:"",desc:"",type:"",relevant:""},repStages:{sec:"E1",id:"",result:""},attachments:{name:"",status:""},calib:{inst:"",id:"",cal:"",due:""}};
+function onFormInput(e){
+  const el=e.target;
+  if(el.dataset.f){setPath(F,el.dataset.f,el.type==="checkbox"?el.checked:el.value);
+    if(F.exampleLoaded&&e.type==="change"){} saveForm();scheduleReview();
+    if(el.dataset.rerender||(e.type==="change"&&/^basic\./.test(el.dataset.f)))renderFormKeep(el.id);}
+  else if(el.dataset.arr){arrOf(el.dataset.arr)[+el.dataset.i][el.dataset.p]=el.value;saveForm();scheduleReview();}
+}
+function renderFormKeep(id){const y=scrollY;renderForm();scrollTo(0,y);if(id){const n=document.getElementById(id);if(n)n.focus({preventScroll:true})}}
+$("#formRoot").addEventListener("input",onFormInput);$("#formRoot").addEventListener("change",onFormInput);
+$("#formRoot").addEventListener("click",e=>{
+  const a=e.target.closest("[data-addrow]");if(a){arrOf(a.dataset.addrow).push(clone(BLANK_ROWS[a.dataset.addrow]));saveForm();renderFormKeep();scheduleReview();return}
+  const d=e.target.closest("[data-del]");if(d){arrOf(d.dataset.del).splice(+d.dataset.i,1);saveForm();renderFormKeep();scheduleReview();return}
+  if(e.target.id==="qapPasteBtn"){const t=$("#qapPaste").value.split(/\n/).map(l=>l.split(/\||\t/).map(s=>s.trim())).filter(p=>p[0]);
+    t.forEach(p=>F.qapStages.push({id:p[0]||"",desc:p[1]||"",type:(p[2]||"").toUpperCase().slice(0,1),relevant:""}));saveForm();renderFormKeep();scheduleReview();toast(`${t.length} stage(s) added`);return}
+  if(e.target.closest("[data-newreport]")){askNew(e.target.closest("[data-newreport]"));return}
+});
+$("#secnav").addEventListener("click",e=>{const a=e.target.closest("[data-jump]");if(a){e.preventDefault();document.getElementById(a.dataset.jump).scrollIntoView({behavior:"smooth",block:"start"})}});
+function askNew(btn){
+  if(btn.dataset.armed){F=blankForm();saveForm();renderForm();scheduleReview();toast("New report started");return}
+  btn.dataset.armed="1";btn.textContent="Click again to clear all entries";btn.classList.add("danger");
+  setTimeout(()=>{if(btn.isConnected){delete btn.dataset.armed;btn.textContent="New report";btn.classList.remove("danger")}},4000);
+}
+$("#clearExample").addEventListener("click",()=>{F=blankForm();saveForm();renderForm();scheduleReview();toast("New report started")});
+
+/* ---------- review tab ---------- */
+let LAST=null;
+function pillClass(s){return s==="Complete"?"p-ok":s==="Issues found"?"p-bad":"p-warn"}
+let STALE=false;
+function runCheck(){LAST=review();STALE=false;const p=$("#topPill");p.textContent=LAST.status;p.className="pill "+pillClass(LAST.status);
+  $("#topCount").textContent=`${LAST.issues.length} issues · ${LAST.man.length} manual · ${LAST.exc.length} exceptions`}
+function scheduleReview(){
+  if(!LAST)return;STALE=true;const p=$("#topPill");p.textContent="Changed since last check";p.className="pill p-n";
+  $("#topCount").textContent="Click Check report now";
+}
+function fRow(f){
+  const go=f.target?`<button class="linkish" type="button" data-go="${esc(f.target)}">Correct entry</button>`:"";
+  const excHtml=f.exc?`<div class="excbox"><b>${esc(f.exc.kind)}</b> · Status: <b>${esc(f.exc.status)}</b>${f.exc.format?`<br>Required format: <span class="mono">${esc(f.exc.format)}</span>`:""}<br>Reason / reference: ${esc(f.exc.reason)}</div>`:"";
+  return `<tr><td>${esc(f.doc)}</td><td>${esc(f.field)}</td><td class="pg">${esc(f.page||"—")}</td><td>${f.exc?"<span class=\"small muted\">Original finding:</span> ":""}${esc(f.issue)}${excHtml}</td><td>${esc(f.fix||"")}</td>
+   <td>${go}<details class="flag"><summary>Wrong warning?</summary><input type="text" placeholder="Why is this incorrect?" data-why="${esc(f.id)}" aria-label="Reason"><button class="btn sm" type="button" data-wrong="${esc(f.id)}">Log it</button></details></td></tr>`;
+}
+function group(cls,title,desc,list){
+  return `<section class="panel group ${cls}"><header><h3>${title}</h3><span class="count">${list.length}</span>${desc?`<p>${desc}</p>`:""}</header>
+   ${list.length?`<div class="tablewrap"><table class="ftable"><thead><tr><th>Document</th><th>Field / section</th><th>Page</th><th>Issue</th><th>Required correction</th><th></th></tr></thead><tbody>${list.map(fRow).join("")}</tbody></table></div>`:`<div class="empty">None.</div>`}</section>`;
+}
+function renderReview(){
+  const r=LAST||review();
+  const v={"Complete":"Every rule passed and all manual confirmations are recorded.","Issues found":"Correct the confirmed issues below, then re-run the review.","Manual review required":"No confirmed issues, but some checks need a person to confirm before issue."}[r.status];
+  $("#tab-review").innerHTML=`<section class="panel"><div class="body"><div class="summary">
+     <div><span class="pill ${pillClass(r.status)}" style="font-size:1.05rem">${r.status}</span></div>
+     <div class="tally"><div><b>${r.issues.length}</b><span>Confirmed issues</span></div><div><b>${r.man.length}</b><span>Manual review</span></div><div><b>${r.exc.length}</b><span>Exceptions${r.pend.length?` (${r.pend.length} pending)`:""}</span></div></div></div>
+     <div class="small muted">${v} Report <span class="mono">${esc(F.reportNo||"(no number)")}</span> · ${FILES.length} file(s) uploaded · checks are fixed rules on your entries; no automatic AI verification.</div>
+     <div class="small muted">Checked at ${new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}. If you change any entry or file, check again.</div>
+     <div class="ticks"><button class="btn primary" type="button" id="rerun">Check again</button><button class="btn" type="button" data-copy="csv">Copy findings (CSV)</button><button class="btn" type="button" data-copy="txt">Copy findings (text)</button><button class="btn" type="button" id="dlcsv">Download CSV</button><button class="btn ghost" type="button" data-logmissed>Log a missed issue</button></div>
+     <textarea class="copyout" id="copyout" hidden readonly aria-label="Export text"></textarea></div></section>
+   ${commentedPanel()}
+   ${group("g-bad","Confirmed issues","Rules that the entries clearly fail.",r.issues)}
+   ${group("g-warn","Manual review required","Checks this version cannot settle: scans, unreadable files, document matching, QAP coverage it cannot verify, and possible inconsistencies.",r.man)}
+   ${group("g-exc","Recorded exceptions","Original findings are kept. Pending exceptions keep the report in manual review until approved.",r.exc)}`;
+}
+function canDownload(){try{return window.top===window.self}catch(e){return false}}
+
+/* ---------- saving files ---------- */
+async function saveFile(name,blob){
+  let d=null;
+  try{if(window.claude&&window.claude.use)d=await window.claude.use("downloads")}catch(e){d=null}
+  if(d){try{await d.save({filename:name,data:blob});toast("Saved "+name)}catch(e){if(e&&e.code!=="declined")toast("Could not save: "+(e.message||e.code))}return}
+  if(canDownload()){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);return}
+  toast("Saving files is not available in this view");
+}
+
+/* ---------- commented Inspection Report ---------- */
+function commentedPanel(){
+  const irs=filesOf("IR");
+  const rows=irs.map(f=>{const ext=(f.name.split(".").pop()||"").toLowerCase();
+    const ok=(ext==="pdf"||ext==="docx")&&f.file&&f.status!=="reading";
+    return `<div class="file"><div class="row"><span class="name">${esc(f.name)}</span>${ok?`<button class="btn primary sm" type="button" data-annot="${f.id}">Download commented copy</button>`:`<span class="chip c-warn">Not available</span>`}</div>
+      <div class="small muted">${ok?(ext==="pdf"?(f.status==="scan"?"Scanned PDF: sections cannot be located, so comments are listed in the page 1 margin and the review summary.":"Each comment is printed in a review margin beside its section, with a numbered tag on the section and a review summary at the end."):"Each finding is added as a Word comment at the matching paragraph, with an overall result comment at the top."):"Commented copies can be made from PDF and Word (.docx) files. Save this report as PDF or .docx and upload it again."}</div></div>`}).join("");
+  return `<section class="panel"><header><h3>Commented Inspection Report</h3><p>The outcome of this check written onto the report itself, for the inspector to correct. Comments not tied to a located section are listed on the comments sheet or at the start of the document.</p></header>
+    <div class="body">${irs.length?`<div class="files">${rows}</div>`:`<div class="muted">Upload the Inspection Report under Documents to get a commented copy.</div>`}</div></section>`;
+}
+function locFor(f){
+  const fld=f.field||"";
+  const map=[
+    [/^Report number/i,[rnRe(),RN_LABEL,/report\s*(no|number|ref)/i]],
+    [/Inspection date/i,[/(inspection|visit)\s*date|date\s*of\s*(inspection|visit)/i,/date/i]],
+    [/Report date/i,[/report\s*date|date\s*of\s*(report|issue)/i,/date/i]],
+    [/Inspection type/i,[/(type\s*of|inspection)\s*(inspection|type)/i,/initial|interim|resident/i]],
+    [/Inspection result|Open NC/i,[/inspection\s*result|result\s*of\s*inspection/i,/satisfactory/i]],
+    [/Open NonConformities/i,[/open\s*non\s*-?\s*conformit/i,/non\s*-?\s*conformit/i]],
+    [/Open Punch/i,[/open\s*punch/i,/punch/i]],
+    [/Release Note/i,[/release\s*note/i]],
+    [/Section G/i,[/^\s*G[\s.:)-]/,/non\s*-?\s*conformit/i]],[/Section H/i,[/^\s*H[\s.:)-]/,/punch/i]],
+    [/Summary/i,[/summary/i,/conclusion/i]],[/Stamping/i,[/traceab/i,/stamp/i]],
+    [/Section E2/i,[/^\s*E\s?2\b/,/\bE\s?2\b/,/surveillance|monitoring/i]],[/Section E3/i,[/^\s*E\s?3\b/,/\bE\s?3\b/,/\breview(ed)?\b/i]],[/E1/i,[/^\s*E\s?1\b/,/\bE\s?1\b/,/witness|hold\s*point/i]],
+    [/E4/i,[/^\s*E\s?4\b/,/\bE\s?4\b/,/problems?\s*pending|areas?\s*of\s*concern/i]],[/E5/i,[/^\s*E\s?5\b/,/\bE\s?5\b/,/manufacturing\s*progress/i]],
+    [/Photograph/i,[/photo/i]],[/Inspector signature/i,[/inspector|signature|sign/i]],[/Checker signature/i,[/checked\s*by|checker|reviewed\s*by|signature/i]],[/Stamp on report/i,[/stamp/i]],
+    [/Attachments/i,[/attach|enclos|annex/i]],[/Calibration/i,[/calibrat/i,/instrument/i]]];
+  for(const [k,res] of map) if(k.test(fld)) return res.filter(Boolean);
+  const b=R.basicFields.find(x=>x.label===fld);
+  if(b) return [new RegExp(reEsc(b.label.split(/[\/(]/)[0].trim()),"i")];
+  return [];
+}
+function commentList(r){
+  const L=[];let n=1;
+  r.issues.forEach(f=>L.push({...f,n:n++,tag:"ISSUE"}));
+  r.man.forEach(f=>L.push({...f,n:n++,tag:"CHECK"}));
+  r.exc.forEach(f=>L.push({...f,n:n++,tag:"EXCEPTION"}));
+  return L;
+}
+const commentText=c=>`${c.tag} ${c.n} - ${c.field}: ${c.issue}`+(c.fix?`\nCorrection: ${c.fix}`:"")+(c.exc?`\nException: ${c.exc.kind}, ${c.exc.status}. Reason / reference: ${c.exc.reason}`:"");
+function wa(s){return String(s??"").replace(/[–—−]/g,"-").replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/…/g,"...").replace(/≤/g,"<=").replace(/≥/g,">=").replace(/→/g,"->").replace(/·/g,"-").replace(/[^\x20-\x7E\xA0-\xFF\n]/g,"?")}
+
+async function makeCommented(id,btn){
+  const rec=FILES.find(f=>f.id===id);if(!rec)return;
+  const r=LAST||review();const ext=rec.name.split(".").pop().toLowerCase();
+  const old=btn.textContent;btn.disabled=true;btn.textContent="Preparing…";
+  try{
+    let blob,name=rec.name.replace(/\.(pdf|docx)$/i,"");
+    if(ext==="pdf"){if(!window.PDFLib)throw new Error("PDF writer did not load (no internet connection?)");blob=await commentedPDF(rec,r);name+="_review-comments.pdf"}
+    else{if(!window.JSZip)throw new Error("Word writer did not load (no internet connection?)");blob=await commentedDOCX(rec,r);name+="_review-comments.docx"}
+    await saveFile(name,blob);
+  }catch(e){toast("Could not prepare the commented copy: "+(e.message||e))}
+  finally{btn.disabled=false;btn.textContent=old}
+}
+
+function pageLines(items){
+  const its=(items||[]).slice().sort((a,b)=>b.y-a.y||a.x-b.x),out=[];
+  its.forEach(t=>{let l=out.find(L=>Math.abs(L.y-t.y)<=3);
+    if(!l){l={y:t.y,parts:[]};out.push(l)}l.parts.push(t)});
+  return out.map(l=>{l.parts.sort((a,b)=>a.x-b.x);const last=l.parts.at(-1);
+    return {y:l.y,x:l.parts[0].x,xe:last.x+(last.w||last.s.length*5),t:l.parts.map(p=>p.s).join(" ").replace(/\s+/g," ")}});
+}
+async function commentedPDF(rec,r){
+  const {PDFDocument,StandardFonts,rgb}=PDFLib;
+  const doc=await PDFDocument.load(await rec.file.arrayBuffer(),{ignoreEncryption:true});
+  const font=await doc.embedFont(StandardFonts.Helvetica),bold=await doc.embedFont(StandardFonts.HelveticaBold);
+  const pages=doc.getPages(),list=commentList(r),lines=(rec.items||[]).map(pageLines);
+  const COL={ISSUE:rgb(.75,.1,.1),CHECK:rgb(.66,.4,0),EXCEPTION:rgb(.38,.27,.62)};
+  const wrap=(t,f,s,w)=>{const out=[];String(t).split("\n").forEach(par=>{let line="";wa(par).split(/\s+/).filter(Boolean).forEach(word=>{const tryL=line?line+" "+word:word;if(f.widthOfTextAtSize(tryL,s)>w&&line){out.push(line);line=word}else line=tryL});out.push(line)});return out};
+
+  /* 1. find the section line for each comment */
+  list.forEach(c=>{
+    c.loc=null;
+    const pm=(c.page||"").startsWith(rec.name+" p.")?parseInt(c.page.slice(rec.name.length+3),10)-1:-1;
+    const order=lines.map((_,i)=>i);if(pm>=0){order.splice(order.indexOf(pm),1);order.unshift(pm)}
+    if(c.at&&c.at.file===rec.name&&c.at.pi!=null){c.loc={pi:c.at.pi,x:c.at.x,y:c.at.y,xe:c.at.xe};return}
+    outer:for(const re of [...(c.re?[c.re]:[]),...locFor(c)]) for(const pi of order){const ln=(lines[pi]||[]).find(l=>re.test(l.t));if(ln){c.loc={pi,x:ln.x,y:ln.y,xe:ln.xe};break outer}}
+  });
+
+  /* 2. widen each page with a review margin and draw comments beside their sections */
+  const MW=200,FS=7.2,LH=8.6;
+  pages.forEach((page,pi)=>{
+    const here=list.filter(c=>c.loc&&c.loc.pi===pi).sort((a,b)=>b.loc.y-a.loc.y);
+    const general=pi===0?list.filter(c=>!c.loc):[];
+    if(!here.length&&!general.length)return;
+    if((page.getRotation().angle||0)%360!==0){here.forEach(c=>c.loc=null);return}
+    const mb=page.getMediaBox();let cb;try{cb=page.getCropBox()}catch(e){cb=mb}
+    const right=Math.min(mb.x+mb.width,cb.x+cb.width);
+    page.setMediaBox(mb.x,mb.y,(right-mb.x)+MW,mb.height);
+    try{page.setCropBox(cb.x,cb.y,(right-cb.x)+MW,cb.height)}catch(e){}
+    const top=Math.min(mb.y+mb.height,cb.y+cb.height),bot=Math.max(mb.y,cb.y),gx=right,bx=gx+8,bw=MW-16;
+    page.drawRectangle({x:gx,y:bot,width:MW,height:top-bot,color:rgb(.965,.968,.975)});
+    page.drawLine({start:{x:gx,y:bot},end:{x:gx,y:top},thickness:.6,color:rgb(.8,.81,.83)});
+    page.drawRectangle({x:gx,y:top-22,width:MW,height:22,color:rgb(0,.016,.62)});
+    page.drawText("REVIEW COMMENTS",{x:bx,y:top-15,size:8,font:bold,color:rgb(1,1,1)});
+    let cursor=top-30;
+    const box=(c,targetY)=>{
+      const head=wrap(`${c.n}  ${c.tag}  -  ${c.field}`,bold,FS,bw-10),body=wrap(c.issue,font,FS,bw-10),fix=c.fix?wrap("Correction: "+c.fix,font,FS,bw-10):[],ex=c.exc?wrap(`Exception: ${c.exc.kind}, ${c.exc.status}. ${c.exc.reason}`,font,FS,bw-10):[];
+      const h=(head.length+body.length+fix.length+ex.length)*LH+8;
+      const yTop=Math.min(targetY,cursor);
+      if(yTop-h<bot+4)return false;
+      const col=COL[c.tag];
+      page.drawRectangle({x:bx,y:yTop-h,width:bw,height:h,color:rgb(1,1,1),borderColor:col,borderWidth:.8});
+      page.drawRectangle({x:bx,y:yTop-h,width:3,height:h,color:col});
+      let ty=yTop-4-FS;
+      head.forEach(l=>{page.drawText(l,{x:bx+7,y:ty,size:FS,font:bold,color:col});ty-=LH});
+      body.forEach(l=>{page.drawText(l,{x:bx+7,y:ty,size:FS,font,color:rgb(.15,.15,.15)});ty-=LH});
+      fix.forEach(l=>{page.drawText(l,{x:bx+7,y:ty,size:FS,font,color:rgb(.38,.38,.38)});ty-=LH});
+      ex.forEach(l=>{page.drawText(l,{x:bx+7,y:ty,size:FS,font,color:COL.EXCEPTION});ty-=LH});
+      cursor=yTop-h-5;return yTop;
+    };
+    here.forEach(c=>{
+      const col=COL[c.tag],yTop=box(c,c.loc.y+10);
+      if(yTop===false){c.loc=null;c.where="Review summary only (no room on page)";return}
+      const tx=Math.max(mb.x+1,c.loc.x-19),ty=c.loc.y-2;
+      page.drawRectangle({x:tx,y:ty,width:16,height:11,color:col});
+      page.drawText(String(c.n),{x:tx+(c.n>9?2.5:5.5),y:ty+2.6,size:7,font:bold,color:rgb(1,1,1)});
+      page.drawLine({start:{x:Math.min(c.loc.xe+3,gx-2),y:c.loc.y+3},end:{x:bx,y:yTop-6},thickness:.5,color:col,dashArray:[2,2],opacity:.75});
+      page.drawLine({start:{x:c.loc.x,y:c.loc.y-2.5},end:{x:Math.min(c.loc.xe,gx-2),y:c.loc.y-2.5},thickness:.6,color:col,opacity:.8});
+      c.where=`Page ${pi+1}`;
+    });
+    if(general.length&&cursor-30>bot){
+      page.drawText("GENERAL (section not located)",{x:bx,y:cursor-8,size:7,font:bold,color:rgb(.4,.4,.4)});cursor-=14;
+      general.forEach(c=>{if(box(c,cursor)!==false)c.where="Page 1, general"});
+    }
+  });
+
+  /* 3. review summary at the end */
+  const W=595.28,H=841.89,M=48,TW=W-2*M;let pg,y;
+  const newPage=()=>{pg=doc.addPage([W,H]);y=H-M};
+  const write=(t,{f=font,s=9.5,c=rgb(.2,.2,.2),indent=0,gap=3}={})=>{wrap(t,f,s,TW-indent).forEach(l=>{if(y<M+s)newPage();pg.drawText(l,{x:M+indent,y:y-s,size:s,font:f,color:c});y-=s+gap})};
+  newPage();
+  pg.drawRectangle({x:0,y:H-70,width:W,height:70,color:rgb(0,.016,.62)});
+  pg.drawText("Inspection Review - Summary",{x:M,y:H-44,size:17,font:bold,color:rgb(1,1,1)});
+  y=H-92;
+  write(`Report: ${F.reportNo||"(no number entered)"}    File: ${rec.name}`,{f:bold,s:10});
+  write(`Checked: ${new Date().toLocaleString()}    Result of check: ${r.status}`,{s:10});
+  write(`${r.issues.length} confirmed issue(s), ${r.man.length} item(s) for manual review, ${r.exc.length} recorded exception(s).`,{s:10,gap:10});
+  write("Each comment appears in the review margin beside the section it refers to, with a matching numbered tag on the section. Checks are fixed rules applied to reviewer-confirmed entries; no automatic AI verification was used.",{s:8.5,c:rgb(.4,.4,.4),gap:12});
+  [["CONFIRMED ISSUES - correct before issue","ISSUE"],["MANUAL REVIEW REQUIRED","CHECK"],["RECORDED EXCEPTIONS","EXCEPTION"]].forEach(([title,tag])=>{
+    const items=list.filter(c=>c.tag===tag);y-=6;write(title+` (${items.length})`,{f:bold,s:11,c:COL[tag],gap:6});
+    if(!items.length)write("None.",{gap:8});
+    items.forEach(c=>{write(`${c.n}.  ${c.field}  [${c.where||"Review summary only"}]`,{f:bold,s:9.5,gap:2});write(c.issue,{indent:16,gap:2});if(c.fix)write("Correction: "+c.fix,{indent:16,c:rgb(.35,.35,.35),gap:2});if(c.exc)write(`Exception: ${c.exc.kind}, ${c.exc.status}. Reason / reference: ${c.exc.reason}`,{indent:16,c:COL.EXCEPTION,gap:2});y-=6});
+  });
+  return new Blob([await doc.save()],{type:"application/pdf"});
+}
+
+async function commentedDOCX(rec,r){
+  const W="http://schemas.openxmlformats.org/wordprocessingml/2006/main",XMLNS="http://www.w3.org/XML/1998/namespace";
+  const zip=await JSZip.loadAsync(await rec.file.arrayBuffer());
+  const parse=s=>new DOMParser().parseFromString(s,"application/xml"),ser=d=>new XMLSerializer().serializeToString(d);
+  const dx=parse(await zip.file("word/document.xml").async("string"));
+  const body=dx.getElementsByTagNameNS(W,"body")[0];if(!body)throw new Error("This Word file has no readable body");
+  const paras=[...body.getElementsByTagNameNS(W,"p")];
+  const texts=paras.map(p=>[...p.getElementsByTagNameNS(W,"t")].map(t=>t.textContent).join(""));
+  const cpath="word/comments.xml";
+  const cx=zip.file(cpath)?parse(await zip.file(cpath).async("string")):parse(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:comments xmlns:w="${W}"/>`);
+  let next=0;[...dx.getElementsByTagNameNS(W,"commentRangeStart"),...cx.getElementsByTagNameNS(W,"comment")].forEach(e=>{const v=parseInt(e.getAttributeNS(W,"id")??e.getAttribute("w:id"),10);if(!isNaN(v)&&v>=next)next=v+1});
+  const date=new Date().toISOString().replace(/\.\d+Z$/,"Z");
+  const first=paras.find((p,i)=>texts[i].trim())||paras[0];
+  const addComment=(p,text)=>{
+    const id=String(next++);const mk=(d,n)=>d.createElementNS(W,"w:"+n);
+    const cs=mk(dx,"commentRangeStart");cs.setAttributeNS(W,"w:id",id);
+    const pPr=[...p.childNodes].find(n=>n.localName==="pPr");p.insertBefore(cs,pPr?pPr.nextSibling:p.firstChild);
+    const ce=mk(dx,"commentRangeEnd");ce.setAttributeNS(W,"w:id",id);p.appendChild(ce);
+    const run=mk(dx,"r"),ref=mk(dx,"commentReference");ref.setAttributeNS(W,"w:id",id);run.appendChild(ref);p.appendChild(run);
+    const c=mk(cx,"comment");c.setAttributeNS(W,"w:id",id);c.setAttributeNS(W,"w:author","Inspection Review Desk");c.setAttributeNS(W,"w:date",date);c.setAttributeNS(W,"w:initials","IRD");
+    text.split("\n").forEach(line=>{const cp=mk(cx,"p"),cr=mk(cx,"r"),t=mk(cx,"t");t.setAttributeNS(XMLNS,"xml:space","preserve");t.textContent=line;cr.appendChild(t);cp.appendChild(cr);c.appendChild(cp)});
+    cx.documentElement.appendChild(c);
+  };
+  if(!first)throw new Error("This Word file has no paragraphs to comment on");
+  addComment(first,`INSPECTION REVIEW - Result of check: ${r.status}\n${r.issues.length} confirmed issue(s), ${r.man.length} item(s) for manual review, ${r.exc.length} recorded exception(s).\nChecks are fixed rules applied to reviewer-confirmed entries; no automatic AI verification was used.`);
+  commentList(r).forEach(c=>{
+    let target=null;for(const re of [...(c.re?[c.re]:[]),...locFor(c)]){const i=texts.findIndex(t=>re.test(t));if(i>=0){target=paras[i];break}}
+    addComment(target||first,commentText(c)+(target?"":"\n(Location in the report could not be identified.)"));
+  });
+  zip.file("word/document.xml",ser(dx));zip.file(cpath,ser(cx));
+  const rp="word/_rels/document.xml.rels",RNS="http://schemas.openxmlformats.org/package/2006/relationships";
+  const rx=parse(await zip.file(rp).async("string"));
+  if(![...rx.getElementsByTagNameNS(RNS,"Relationship")].some(e=>/\/comments$/.test(e.getAttribute("Type")||""))){
+    const rel=rx.createElementNS(RNS,"Relationship");rel.setAttribute("Id","rIdIRD"+uid());rel.setAttribute("Type","http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments");rel.setAttribute("Target","comments.xml");rx.documentElement.appendChild(rel);zip.file(rp,ser(rx))}
+  const ctp="[Content_Types].xml",CNS="http://schemas.openxmlformats.org/package/2006/content-types";
+  const tx=parse(await zip.file(ctp).async("string"));
+  if(![...tx.getElementsByTagNameNS(CNS,"Override")].some(e=>e.getAttribute("PartName")==="/word/comments.xml")){
+    const o=tx.createElementNS(CNS,"Override");o.setAttribute("PartName","/word/comments.xml");o.setAttribute("ContentType","application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml");tx.documentElement.appendChild(o);zip.file(ctp,ser(tx))}
+  return await zip.generateAsync({type:"blob",compression:"DEFLATE",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+}
+function exportCSV(){
+  const r=LAST||review();const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const head=[["Report number",F.reportNo],["Review date",new Date().toISOString().slice(0,10)],["Overall status",r.status],[]];
+  const rows=[["Category","Document","Field / section","Page","Issue","Required correction","Exception","Exception status","Reason / reference"]];
+  r.all.forEach(f=>rows.push([{issue:"Confirmed issue",manual:"Manual review",exception:"Recorded exception"}[f.cat],f.doc,f.field,f.page,f.issue,f.fix,f.exc?.kind||"",f.exc?.status||"",f.exc?.reason||""]));
+  return [...head,...rows].map(r=>r.map(q).join(",")).join("\n");
+}
+function exportTXT(){
+  const r=LAST||review();const L=[`INSPECTION REVIEW DESK — ${F.reportNo||"(no report number)"}`,`Status: ${r.status} | Issues: ${r.issues.length} | Manual: ${r.man.length} | Exceptions: ${r.exc.length}`,""];
+  [["CONFIRMED ISSUES",r.issues],["MANUAL REVIEW REQUIRED",r.man],["RECORDED EXCEPTIONS",r.exc]].forEach(([t,l])=>{L.push(t);if(!l.length)L.push("  None.");
+    l.forEach((f,i)=>{L.push(`${i+1}. [${f.doc} · ${f.field}${f.page?" · "+f.page:""}] ${f.issue}`);if(f.fix)L.push(`   Correction: ${f.fix}`);if(f.exc)L.push(`   Exception: ${f.exc.kind} — ${f.exc.status} — ${f.exc.reason}`)});L.push("")});
+  return L.join("\n");
+}
+async function copyText(t){const box=$("#copyout");try{await navigator.clipboard.writeText(t);toast("Copied")}catch(e){if(box){box.hidden=false;box.value=t;box.select();toast("Select and copy the text below")}}}
+$("#tab-review").addEventListener("click",e=>{
+  if(e.target.id==="rerun"){runCheck();renderReview();toast("Report checked");return}
+  const c=e.target.closest("[data-copy]");if(c){copyText(c.dataset.copy==="csv"?exportCSV():exportTXT());return}
+  if(e.target.id==="dlcsv"){saveFile(`review-${(F.reportNo||"report").replace(/[^\w-]+/g,"_")}.csv`,new Blob([exportCSV()],{type:"text/csv"}));return}
+  const an=e.target.closest("[data-annot]");if(an){makeCommented(an.dataset.annot,an);return}
+  if(e.target.closest("[data-logmissed]")){showTab("log");setTimeout(()=>$("#lm_desc")?.focus(),50);return}
+  const g=e.target.closest("[data-go]");if(g){goTo(g.dataset.go);return}
+  const w=e.target.closest("[data-wrong]");if(w){const f=(LAST.all||[]).find(x=>x.id===w.dataset.wrong);const why=w.parentElement.querySelector("input").value;
+    LOG.unshift({id:uid(),date:new Date().toISOString().slice(0,16).replace("T"," "),type:"Incorrect warning",rule:f?.id||"",report:F.reportNo,section:f?.field||"",text:f?.issue||"",note:why});saveLog();toast("Logged in Trial log");w.closest("details").open=false;}
+});
+function goTo(t){
+  if(t.startsWith("tab:")){showTab(t.slice(4));return}
+  showTab("form");setTimeout(()=>{const el=document.getElementById(t);if(el){el.scrollIntoView({behavior:"smooth",block:"center"});const f=el.matches("input,select,textarea")?el:el.querySelector("input,select,textarea");if(f)f.focus({preventScroll:true})}},30);
+}
+
+/* ---------- rules tab ---------- */
+function renderRules(){
+  const listInp=(path,label,hint)=>`<div class="fld"><label for="r_${path}">${esc(label)}</label><input type="text" id="r_${path}" data-rl="${path}" value="${esc(R[path].join(", "))}"><span class="hint">${esc(hint||"Comma-separated")}</span></div>`;
+  $("#tab-rules").innerHTML=`<div class="note"><span>Rules are saved in this browser. Adjust them as trials show missed issues or wrong warnings, then re-run the review. The supplied templates were not available when this version was built, so the basic-field list is a starting point.</span>
+     <span class="ticks"><button class="btn sm" type="button" id="rCopy">Copy rules (JSON)</button><button class="btn sm danger" type="button" id="rReset">Reset to defaults</button></span></div>
+   ${panel("r-basic","","Basic fields","Mandatory fields cannot be blank. Accepted placeholders are the only \"not applicable\" values allowed. PO fields also trigger the \"PO not available\" check.",
+     `<div class="tablewrap"><table class="tbl"><thead><tr><th>Field label</th><th>Mandatory</th><th>Accepted placeholders</th><th>PO field</th><th></th></tr></thead><tbody>
+     ${R.basicFields.map((b,i)=>`<tr><td><input type="text" data-rb="${i}" data-p="label" value="${esc(b.label)}" aria-label="Label"></td><td><input type="checkbox" data-rb="${i}" data-p="mandatory" ${b.mandatory?"checked":""} aria-label="Mandatory"></td>
+     <td><input type="text" data-rb="${i}" data-p="allowed" value="${esc((b.allowed||[]).join(", "))}" aria-label="Placeholders"></td><td><input type="checkbox" data-rb="${i}" data-p="po" ${b.po?"checked":""} aria-label="PO field"></td>
+     <td class="x"><button class="btn sm ghost danger" type="button" data-rbdel="${i}">Remove</button></td></tr>`).join("")}</tbody></table></div>
+     <div class="ticks"><button class="btn sm" type="button" id="rbAdd">Add field</button></div>`)}
+   ${panel("r-num","","Numbering, Release Note and E4 values","",
+     `<div class="fields">${listInp("docTypes","Allowed YY document types")}${listInp("rnNoValues","RN number values when RN Issued = No")}${listInp("nilWords","Accepted \"none\" wording for E4 / G / H")}</div>`)}
+   ${panel("r-kw","","Summary and text keywords","Matching is simple and case-insensitive. Tune these lists when the summary check misreads a report.",
+     `<div class="fields">${listInp("kwPos","Positive outcome words")}${listInp("kwNeg","Negative outcome words")}${listInp("kwOpen","Open-item words")}${listInp("kwReoffer","Re-offer words")}${listInp("kwNewLot","New-lot words")}${listInp("kwConcern","Concern words searched in report text")}</div>`)}
+   ${panel("r-sym","","Traceability stamping symbols","Add the supplied symbol images here (PNG or JPG, under 200 KB each).",
+     `<div class="files">${R.symbols.map((s,i)=>`<div class="file"><div class="row">${s.img?`<img src="${s.img}" alt="" style="height:34px;width:auto">`:`<span class="chip c-n">No image</span>`}
+       <input type="text" data-rs="${i}" value="${esc(s.name)}" aria-label="Symbol name" style="flex:1;min-width:140px">
+       <label class="btn sm" for="rsimg_${i}">Image…</label><input type="file" id="rsimg_${i}" data-rsimg="${i}" accept="image/*" hidden>
+       <button class="btn sm ghost danger" type="button" data-rsdel="${i}">Remove</button></div></div>`).join("")}</div>
+       <div class="ticks"><button class="btn sm" type="button" id="rsAdd">Add symbol</button></div>`)}
+   <textarea class="copyout" id="rulesOut" hidden readonly aria-label="Rules JSON"></textarea>`;
+}
+function rulesChanged(full){saveRules();renderForm();scheduleReview();if(full)renderRules()}
+$("#tab-rules").addEventListener("change",e=>{
+  const el=e.target;
+  if(el.dataset.rl){R[el.dataset.rl]=csvList(el.value);rulesChanged()}
+  else if(el.dataset.rb){const b=R.basicFields[+el.dataset.rb],p=el.dataset.p;b[p]=el.type==="checkbox"?el.checked:p==="allowed"?csvList(el.value):el.value;
+    if(p==="po"&&b.po&&!F.poExc[b.key])F.poExc[b.key]={on:false,reason:"",status:"Pending review"};rulesChanged()}
+  else if(el.dataset.rs){R.symbols[+el.dataset.rs].name=el.value;rulesChanged()}
+  else if(el.dataset.rsimg){const f=el.files[0];if(!f)return;if(f.size>200*1024){toast("Image is over 200 KB");return}
+    const rd=new FileReader();rd.onload=()=>{R.symbols[+el.dataset.rsimg].img=rd.result;rulesChanged(true)};rd.readAsDataURL(f)}
+});
+$("#tab-rules").addEventListener("click",e=>{
+  const t=e.target;
+  if(t.id==="rbAdd"){const key="custom_"+uid();R.basicFields.push({key,label:"New field",mandatory:true,allowed:[],po:false});F.basic[key]="";saveForm();rulesChanged(true)}
+  else if(t.dataset.rbdel!=null){R.basicFields.splice(+t.dataset.rbdel,1);rulesChanged(true)}
+  else if(t.id==="rsAdd"){R.symbols.push({id:"s"+uid(),name:"New symbol",img:""});rulesChanged(true)}
+  else if(t.dataset.rsdel!=null){R.symbols.splice(+t.dataset.rsdel,1);rulesChanged(true)}
+  else if(t.id==="rCopy"){const o=$("#rulesOut");const s=JSON.stringify(R,null,1);navigator.clipboard?.writeText(s).then(()=>toast("Copied"),()=>{o.hidden=false;o.value=s;o.select()})}
+  else if(t.id==="rReset"){if(!t.dataset.armed){t.dataset.armed="1";t.textContent="Click again to reset";return}
+    R=clone(DEFAULT_RULES);R.basicFields.forEach(b=>{if(F.basic[b.key]==null)F.basic[b.key]="";if(b.po&&!F.poExc[b.key])F.poExc[b.key]={on:false,reason:"",status:"Pending review"}});rulesChanged(true);toast("Rules reset")}
+});
+
+/* ---------- trial log ---------- */
+function renderLog(){
+  const inc=LOG.filter(l=>l.type==="Incorrect warning").length,mis=LOG.length-inc;
+  $("#tab-log").innerHTML=`<div class="note"><span>Use this log during trials with real reports. Record warnings that were wrong and issues the tool missed, then refine the rules. The log is kept in this browser.</span></div>
+   ${panel("lm","","Log a missed issue","An error you found in the report that the review did not flag.",
+     `<div class="fields">${`<div class="fld"><label for="lm_sec">Section / field</label><input type="text" id="lm_sec"></div>`}${`<div class="fld"><label for="lm_desc">What was missed</label><input type="text" id="lm_desc"></div>`}${`<div class="fld"><label for="lm_rule">Rule that should catch it</label><input type="text" id="lm_rule"></div>`}</div>
+     <div class="ticks"><button class="btn primary" type="button" id="lmSave">Add to log</button></div>`)}
+   <section class="panel"><header><h3>Trial log</h3><span class="count">${inc} incorrect warnings · ${mis} missed issues</span>
+     <span class="ticks" style="margin-left:auto"><button class="btn sm" type="button" id="logCopy">Copy log (CSV)</button><button class="btn sm danger" type="button" id="logClear">Clear log</button></span></header>
+     ${LOG.length?`<div class="tablewrap"><table class="ftable"><thead><tr><th>Date</th><th>Type</th><th>Report</th><th>Section</th><th>Finding / description</th><th>Note</th><th></th></tr></thead><tbody>
+     ${LOG.map(l=>`<tr><td class="pg">${esc(l.date)}</td><td><span class="chip ${l.type==="Incorrect warning"?"c-warn":"c-bad"}">${esc(l.type)}</span></td><td class="mono">${esc(l.report||"")}</td><td>${esc(l.section)}</td><td>${esc(l.text)}</td><td>${esc(l.note)}</td><td><button class="btn sm ghost danger" type="button" data-logdel="${l.id}">Remove</button></td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No entries yet. Use "Wrong warning?" on any finding, or log a missed issue above.</div>`}
+     <textarea class="copyout" id="logOut" hidden readonly aria-label="Log CSV"></textarea></section>`;
+}
+$("#tab-log").addEventListener("click",e=>{
+  const t=e.target;
+  if(t.id==="lmSave"){const d=$("#lm_desc").value.trim();if(!d){toast("Describe what was missed");return}
+    LOG.unshift({id:uid(),date:new Date().toISOString().slice(0,16).replace("T"," "),type:"Missed issue",rule:"",report:F.reportNo,section:$("#lm_sec").value.trim(),text:d,note:$("#lm_rule").value.trim()});saveLog();renderLog();toast("Added to log")}
+  else if(t.dataset.logdel){LOG=LOG.filter(l=>l.id!==t.dataset.logdel);saveLog();renderLog()}
+  else if(t.id==="logCopy"){const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;const s=[["Date","Type","Report","Section","Finding / description","Note","Rule ID"],...LOG.map(l=>[l.date,l.type,l.report,l.section,l.text,l.note,l.rule])].map(r=>r.map(q).join(",")).join("\n");
+    navigator.clipboard?.writeText(s).then(()=>toast("Copied"),()=>{const o=$("#logOut");o.hidden=false;o.value=s;o.select()})}
+  else if(t.id==="logClear"){if(!t.dataset.armed){t.dataset.armed="1";t.textContent="Click again to clear";return}LOG=[];saveLog();renderLog()}
+});
+
+/* ---------- start ---------- */
+renderForm();renderDocs();
+let startTab="docs";try{startTab=localStorage.getItem("ird.tab")||"docs"}catch(e){}
+saveForm();
+showTab(["docs","form","log"].includes(startTab)?startTab:"docs");
+</script>
